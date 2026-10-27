@@ -33,6 +33,7 @@ export const boardMe: Me = {
     'Tasks.Work',
     'Leaderboard.View',
     'Sponsors.Manage',
+    'Leads.Manage',
   ],
   preferences: { mode: 'system', textSize: 'default', density: 'comfortable' },
 }

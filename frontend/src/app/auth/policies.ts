@@ -34,6 +34,8 @@ export const Policies = {
   LeaderboardView: 'Leaderboard.View',
   /** Board only: sponsors, tiers, partners and their group links. */
   SponsorsManage: 'Sponsors.Manage',
+  /** Board only: sponsor and speaker leads. */
+  LeadsManage: 'Leads.Manage',
 } as const
 
 export type Policy = (typeof Policies)[keyof typeof Policies] | (string & {})

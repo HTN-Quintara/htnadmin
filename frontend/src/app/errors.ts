@@ -37,6 +37,10 @@ const codeMessages: Record<string, string> = {
   not_paid: 'This registration is not paid yet.',
   too_many_uploads: 'Too many uploads for this registration. Reply to the billing email instead.',
   invalid_payment_account: "That payment account doesn't match the payment method.",
+  // Leads (frame 17).
+  invalid_transition: "That move isn't allowed from the lead's current stage.",
+  lead_closed: 'This lead is closed. Reopen it to edit the details.',
+  reason_required: 'Add the speaker\'s email before confirming, so the link can be sent.',
   // Sponsors & partners (frame 13).
   already_received: "This sponsor's cash was already recorded.",
   not_received: "This sponsor's cash was not recorded as received.",

@@ -39,6 +39,7 @@ export function EventLayout() {
   const canCheckIn = useCan(Policies.CheckInScan)
   const canViewBoard = useCan(Policies.TasksViewBoard)
   const canSponsors = useCan(Policies.SponsorsManage)
+  const canLeads = useCan(Policies.LeadsManage)
 
   if (query.isPending) {
     return (
@@ -99,6 +100,7 @@ export function EventLayout() {
     ...(canManage ? [{ to: `${base}/emails`, label: 'Emails' }] : []),
     ...(canCheckIn ? [{ to: `${base}/check-in`, label: 'Check-in' }] : []),
     ...(canSponsors ? [{ to: `${base}/sponsors`, label: 'Sponsors' }] : []),
+    ...(canLeads ? [{ to: `${base}/leads`, label: 'Leads' }] : []),
   ]
 
   return (

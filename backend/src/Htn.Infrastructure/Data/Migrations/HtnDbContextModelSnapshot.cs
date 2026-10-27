@@ -1510,6 +1510,186 @@ namespace Htn.Infrastructure.Data.Migrations
                         });
                 });
 
+            modelBuilder.Entity("Htn.Domain.Leads.Lead", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<decimal?>("AskAmount")
+                        .HasPrecision(12, 2)
+                        .HasColumnType("numeric(12,2)")
+                        .HasColumnName("ask_amount");
+
+                    b.Property<string>("AskNote")
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)")
+                        .HasColumnName("ask_note");
+
+                    b.Property<Guid?>("AskTierId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("ask_tier_id");
+
+                    b.Property<DateTimeOffset?>("ConfirmedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("confirmed_at");
+
+                    b.Property<Guid?>("ConfirmedById")
+                        .HasColumnType("uuid")
+                        .HasColumnName("confirmed_by_id");
+
+                    b.Property<string>("ContactEmail")
+                        .HasMaxLength(254)
+                        .HasColumnType("character varying(254)")
+                        .HasColumnName("contact_email");
+
+                    b.Property<string>("ContactMobile")
+                        .HasMaxLength(13)
+                        .HasColumnType("character varying(13)")
+                        .HasColumnName("contact_mobile");
+
+                    b.Property<string>("ContactName")
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)")
+                        .HasColumnName("contact_name");
+
+                    b.Property<string>("ContactRole")
+                        .HasMaxLength(80)
+                        .HasColumnType("character varying(80)")
+                        .HasColumnName("contact_role");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedById")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by_id");
+
+                    b.Property<string>("DeclineReason")
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)")
+                        .HasColumnName("decline_reason");
+
+                    b.Property<DateTimeOffset?>("DeclinedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("declined_at");
+
+                    b.Property<Guid?>("DeclinedById")
+                        .HasColumnType("uuid")
+                        .HasColumnName("declined_by_id");
+
+                    b.Property<Guid>("EventId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("event_id");
+
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)")
+                        .HasColumnName("kind");
+
+                    b.Property<string>("NameKey")
+                        .IsRequired()
+                        .HasMaxLength(160)
+                        .HasColumnType("character varying(160)")
+                        .HasColumnName("name_key");
+
+                    b.Property<string>("NextStep")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("next_step");
+
+                    b.Property<DateOnly?>("NextStepDue")
+                        .HasColumnType("date")
+                        .HasColumnName("next_step_due");
+
+                    b.Property<Guid?>("OwnerPersonId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("owner_person_id");
+
+                    b.Property<uint>("RowVersion")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.Property<string>("Source")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)")
+                        .HasColumnName("source");
+
+                    b.Property<Guid?>("SpeakerId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("speaker_id");
+
+                    b.Property<Guid?>("SponsorId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("sponsor_id");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)")
+                        .HasColumnName("status");
+
+                    b.Property<string>("Subject")
+                        .IsRequired()
+                        .HasMaxLength(160)
+                        .HasColumnType("character varying(160)")
+                        .HasColumnName("subject");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedById")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_leads");
+
+                    b.HasIndex("AskTierId")
+                        .HasDatabaseName("ix_leads_ask_tier_id");
+
+                    b.HasIndex("OwnerPersonId")
+                        .HasDatabaseName("ix_leads_owner");
+
+                    b.HasIndex("SpeakerId")
+                        .IsUnique()
+                        .HasDatabaseName("ux_leads_speaker")
+                        .HasFilter("speaker_id IS NOT NULL");
+
+                    b.HasIndex("SponsorId")
+                        .IsUnique()
+                        .HasDatabaseName("ux_leads_sponsor")
+                        .HasFilter("sponsor_id IS NOT NULL");
+
+                    b.HasIndex("EventId", "Kind", "Status", "NextStepDue")
+                        .HasDatabaseName("ix_leads_board");
+
+                    b.ToTable("leads", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_leads_amount", "ask_amount IS NULL OR (ask_amount > 0 AND round(ask_amount, 2) = ask_amount)");
+
+                            t.HasCheckConstraint("ck_leads_ask", "kind = 'Sponsor' OR (ask_tier_id IS NULL AND ask_amount IS NULL)");
+
+                            t.HasCheckConstraint("ck_leads_confirmed", "(status = 'Confirmed') = (confirmed_at IS NOT NULL) AND (confirmed_at IS NULL) = (confirmed_by_id IS NULL)");
+
+                            t.HasCheckConstraint("ck_leads_declined", "(status = 'Declined') = (declined_at IS NOT NULL) AND (declined_at IS NULL) = (decline_reason IS NULL) AND (declined_at IS NULL) = (declined_by_id IS NULL)");
+
+                            t.HasCheckConstraint("ck_leads_kind", "kind IN ('Sponsor', 'Speaker')");
+
+                            t.HasCheckConstraint("ck_leads_link", "(sponsor_id IS NULL OR (kind = 'Sponsor' AND status = 'Confirmed')) AND (speaker_id IS NULL OR (kind = 'Speaker' AND status = 'Confirmed'))");
+
+                            t.HasCheckConstraint("ck_leads_source", "source IN ('Manual', 'Directory')");
+
+                            t.HasCheckConstraint("ck_leads_status", "status IN ('Prospect', 'Contacted', 'InTalks', 'Confirmed', 'Declined')");
+                        });
+                });
+
             modelBuilder.Entity("Htn.Domain.Organization.Person", b =>
                 {
                     b.Property<Guid>("Id")
@@ -2467,6 +2647,117 @@ namespace Htn.Infrastructure.Data.Migrations
                             t.HasCheckConstraint("ck_payment_accounts_number", "kind = 'Cash' OR account_number IS NOT NULL");
 
                             t.HasCheckConstraint("ck_payment_accounts_opening_balance", "round(opening_balance, 2) = opening_balance");
+                        });
+                });
+
+            modelBuilder.Entity("Htn.Domain.Speakers.Speaker", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Affiliation")
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)")
+                        .HasColumnName("affiliation");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedById")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by_id");
+
+                    b.Property<string>("Email")
+                        .IsRequired()
+                        .HasMaxLength(254)
+                        .HasColumnType("character varying(254)")
+                        .HasColumnName("email");
+
+                    b.Property<Guid>("EventId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("event_id");
+
+                    b.Property<Guid?>("LeadId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("lead_id");
+
+                    b.Property<string>("PersonName")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)")
+                        .HasColumnName("person_name");
+
+                    b.Property<DateTimeOffset?>("PhotoApprovedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("photo_approved_at");
+
+                    b.Property<Guid?>("PhotoApprovedById")
+                        .HasColumnType("uuid")
+                        .HasColumnName("photo_approved_by_id");
+
+                    b.Property<Guid?>("PhotoFileId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("photo_file_id");
+
+                    b.Property<uint>("RowVersion")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)")
+                        .HasColumnName("status");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedById")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by_id");
+
+                    b.Property<string>("VoidReason")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("void_reason");
+
+                    b.Property<DateTimeOffset?>("VoidedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("voided_at");
+
+                    b.Property<Guid?>("VoidedById")
+                        .HasColumnType("uuid")
+                        .HasColumnName("voided_by_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_speakers");
+
+                    b.HasIndex("LeadId")
+                        .HasDatabaseName("ix_speakers_lead_id");
+
+                    b.HasIndex("PhotoFileId")
+                        .HasDatabaseName("ix_speakers_photo_file_id");
+
+                    b.HasIndex("EventId", "Email")
+                        .IsUnique()
+                        .HasDatabaseName("ux_speakers_event_email")
+                        .HasFilter("voided_at IS NULL");
+
+                    b.HasIndex("EventId", "Status")
+                        .HasDatabaseName("ix_speakers_event_status");
+
+                    b.ToTable("speakers", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_speakers_photo", "(photo_approved_at IS NULL) = (photo_approved_by_id IS NULL) AND (photo_approved_at IS NULL OR photo_file_id IS NOT NULL)");
+
+                            t.HasCheckConstraint("ck_speakers_status", "status IN ('Invited', 'Confirmed', 'Declined')");
+
+                            t.HasCheckConstraint("ck_speakers_void", "(voided_at IS NULL) = (void_reason IS NULL) AND (voided_at IS NULL) = (voided_by_id IS NULL)");
                         });
                 });
 
@@ -4292,6 +4583,40 @@ namespace Htn.Infrastructure.Data.Migrations
                         .HasConstraintName("fk_ledger_entries_stored_files_receipt_file_id");
                 });
 
+            modelBuilder.Entity("Htn.Domain.Leads.Lead", b =>
+                {
+                    b.HasOne("Htn.Domain.Sponsors.SponsorTier", null)
+                        .WithMany()
+                        .HasForeignKey("AskTierId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_leads_sponsor_tiers_ask_tier_id");
+
+                    b.HasOne("Htn.Domain.Events.Event", null)
+                        .WithMany()
+                        .HasForeignKey("EventId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_leads_events_event_id");
+
+                    b.HasOne("Htn.Domain.Organization.Person", null)
+                        .WithMany()
+                        .HasForeignKey("OwnerPersonId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_leads_people_owner_person_id");
+
+                    b.HasOne("Htn.Domain.Speakers.Speaker", null)
+                        .WithMany()
+                        .HasForeignKey("SpeakerId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_leads_speakers_speaker_id");
+
+                    b.HasOne("Htn.Domain.Sponsors.Sponsor", null)
+                        .WithMany()
+                        .HasForeignKey("SponsorId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_leads_sponsors_sponsor_id");
+                });
+
             modelBuilder.Entity("Htn.Domain.Organization.PersonHistory", b =>
                 {
                     b.HasOne("Htn.Domain.Organization.Person", null)
@@ -4417,6 +4742,28 @@ namespace Htn.Infrastructure.Data.Migrations
                         .HasForeignKey("LogoLightFileId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .HasConstraintName("fk_org_settings_stored_files_logo_light_file_id");
+                });
+
+            modelBuilder.Entity("Htn.Domain.Speakers.Speaker", b =>
+                {
+                    b.HasOne("Htn.Domain.Events.Event", null)
+                        .WithMany()
+                        .HasForeignKey("EventId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_speakers_events_event_id");
+
+                    b.HasOne("Htn.Domain.Leads.Lead", null)
+                        .WithMany()
+                        .HasForeignKey("LeadId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_speakers_leads_lead_id");
+
+                    b.HasOne("Htn.Domain.Files.StoredFile", null)
+                        .WithMany()
+                        .HasForeignKey("PhotoFileId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_speakers_stored_files_photo_file_id");
                 });
 
             modelBuilder.Entity("Htn.Domain.Sponsors.EventPartner", b =>

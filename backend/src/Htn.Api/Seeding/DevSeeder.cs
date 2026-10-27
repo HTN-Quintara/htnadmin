@@ -4,6 +4,7 @@ using Htn.Domain.Events;
 using Htn.Domain.Files;
 using Htn.Domain.Finance;
 using Htn.Domain.Registrations;
+using Htn.Domain.Leads;
 using Htn.Domain.Sponsors;
 using Htn.Domain.Settings;
 using Htn.Api.Features.Tasks;
@@ -52,6 +53,7 @@ public static class DevSeeder
         await EnsureTasksAsync(db, clock, ct);
         await EnsureFinanceAsync(db, users, sp.GetRequiredService<IFileStorage>(), clock, ct);
         await EnsureSponsorsAsync(db, clock, ct);
+        await EnsureLeadsAsync(db, clock, ct);
         logger.LogInformation("Development seed data is in place");
     }
 
@@ -388,6 +390,25 @@ public static class DevSeeder
         db.Sponsors.AddRange(cloudcorp, securebank, donor);
 
         db.EventPartners.Add(EventPartner.Tag(ev.Id, "DICT", "Government agency", Guid.Empty, now));
+        await db.SaveChangesAsync(ct);
+    }
+
+    /// <summary>A couple of sponsor and speaker leads on HTN Con 2026 (frame 17), so the board has data.</summary>
+    private static async Task EnsureLeadsAsync(HtnDbContext db, TimeProvider clock, CancellationToken ct)
+    {
+        var now = clock.GetUtcNow();
+        var ev = await db.Events.FirstOrDefaultAsync(e => e.Slug == SampleEventSlug, ct);
+        if (ev is null || await db.Leads.AnyAsync(l => l.EventId == ev.Id, ct)) return;
+
+        var due = ManilaTime.ManilaDate(now).AddDays(-2);
+        var globe = Lead.Create(ev.Id, new NewLead(LeadKind.Sponsor, "Globe Business", "Rina Cruz", "Partnerships Mgr",
+            null, null, null, 100000m, "Gold", null, "Follow up", due), Guid.Empty, now);
+        var devtools = Lead.Create(ev.Id, new NewLead(LeadKind.Sponsor, "DevTools Inc.", "Mae Torres", "DevRel",
+            null, null, null, 120000m, "Workshop Track", null, "Call", ManilaTime.ManilaDate(now).AddDays(3)), Guid.Empty, now);
+        devtools.MoveTo(LeadStatus.InTalks, null, Guid.Empty, now);
+        var gomez = Lead.Create(ev.Id, new NewLead(LeadKind.Speaker, "Dr. Lara Gomez", "DICT", "Undersecretary",
+            "lara.gomez@dict.gov.ph", null, null, null, "Keynote: state of PH cybersecurity", null, "Find secretary contact", null), Guid.Empty, now);
+        db.Leads.AddRange(globe, devtools, gomez);
         await db.SaveChangesAsync(ct);
     }
 
