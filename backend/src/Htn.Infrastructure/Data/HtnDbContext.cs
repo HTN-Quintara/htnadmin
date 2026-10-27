@@ -72,6 +72,10 @@ public sealed class HtnDbContext(DbContextOptions<HtnDbContext> options)
     public DbSet<Session> Sessions => Set<Session>();
     public DbSet<SessionRoom> SessionRooms => Set<SessionRoom>();
     public DbSet<SessionSpeaker> SessionSpeakers => Set<SessionSpeaker>();
+    public DbSet<SpeakerTravel> SpeakerTravel => Set<SpeakerTravel>();
+    public DbSet<SpeakerLink> SpeakerLinks => Set<SpeakerLink>();
+    public DbSet<SpeakerLinkAccess> SpeakerLinkAccess => Set<SpeakerLinkAccess>();
+    public DbSet<SpeakerPlusOne> SpeakerPlusOnes => Set<SpeakerPlusOne>();
     public DbSet<AuditEntry> AuditEntries => Set<AuditEntry>();
     public DbSet<OutboxMessage> Outbox => Set<OutboxMessage>();
     public DbSet<AccountToken> AccountTokens => Set<AccountToken>();
@@ -137,6 +141,11 @@ public sealed class HtnDbContext(DbContextOptions<HtnDbContext> options)
             // A room is deactivated, never deleted. (Sessions and their room/speaker link rows are deletable.)
             if (entry.State == EntityState.Deleted && entry.Entity is EventRoom)
                 throw new InvalidOperationException("Event rooms are deactivated, never deleted.");
+            // Speaker travel/links/plus-ones are append-only: purge, revoke or remove with a reason, never delete.
+            if (entry.State == EntityState.Deleted && entry.Entity is Htn.Domain.Speakers.SpeakerTravel or SpeakerLink or SpeakerPlusOne)
+                throw new InvalidOperationException($"{entry.Entity.GetType().Name} rows are never deleted.");
+            if (entry.State is EntityState.Modified or EntityState.Deleted && entry.Entity is SpeakerLinkAccess)
+                throw new InvalidOperationException("SpeakerLinkAccess is append-only.");
             if (entry.State == EntityState.Deleted && entry.Entity is Person)
                 throw new InvalidOperationException("People are deactivated, never deleted.");
             if (entry.State == EntityState.Deleted && entry.Entity is Position or PositionAssignment or PaymentAccount or StoredFile or Domain.Settings.OrgSettings

@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useParams } from 'react-router'
+import { Link, useParams } from 'react-router'
 import { errorMessage } from '@/app/errors'
 import { Alert } from '@/components/ui/Alert'
 import { Button } from '@/components/ui/Button'
@@ -34,6 +34,14 @@ export function AgendaPage() {
 
   return (
     <div className="flex flex-col gap-5">
+      <nav aria-label="Agenda views" className="flex gap-5 border-b border-gray-200 dark:border-white/10">
+        <span className="flex h-11 items-center border-b-2 border-brand-600 text-sm font-medium text-brand-700 dark:text-brand-300">Programme</span>
+        {canManage && (
+          <Link to="speakers" className="flex h-11 items-center text-sm font-medium text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-50">
+            Speakers
+          </Link>
+        )}
+      </nav>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex flex-wrap items-center gap-2">
           {agenda.rooms.filter((r) => r.isActive).map((r) => (

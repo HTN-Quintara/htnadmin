@@ -18,6 +18,13 @@ public static class Problems
         TypedResults.Problem(statusCode: status, title: title, detail: detail,
             extensions: code is null ? null : new Dictionary<string, object?> { ["code"] = code });
 
+    /// <summary>Like <see cref="Result"/>, with extra machine-readable fields alongside <c>code</c> (e.g. attemptsLeft, lockedUntil).</summary>
+    public static IResult Result(int status, string title, string? detail, string code, IDictionary<string, object?> extra)
+    {
+        var ext = new Dictionary<string, object?>(extra) { ["code"] = code };
+        return TypedResults.Problem(statusCode: status, title: title, detail: detail, extensions: ext);
+    }
+
     public static IResult Field(string field, string message) =>
         TypedResults.ValidationProblem(new Dictionary<string, string[]> { [field] = [message] });
 

@@ -36,6 +36,8 @@ export const Policies = {
   SponsorsManage: 'Sponsors.Manage',
   /** Board only: sponsor and speaker leads. */
   LeadsManage: 'Leads.Manage',
+  /** Board, or the lead of the event's Programs committee: speaker links, travel and the agenda. */
+  SpeakersManage: 'Speakers.Manage',
 } as const
 
 export type Policy = (typeof Policies)[keyof typeof Policies] | (string & {})

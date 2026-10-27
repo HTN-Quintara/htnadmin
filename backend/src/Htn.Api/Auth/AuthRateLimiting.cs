@@ -5,6 +5,8 @@ using Htn.Api.Common;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.Extensions.Options;
 
+using Htn.Domain.Speakers;
+
 namespace Htn.Api.Auth;
 
 /// <summary>
@@ -91,6 +93,7 @@ public sealed class EmailRateLimiter : IDisposable
     private readonly PartitionedRateLimiter<string> _login;
     private readonly PartitionedRateLimiter<string> _forgot;
     private readonly PartitionedRateLimiter<string> _register;
+    private readonly PartitionedRateLimiter<string> _speakerOtp;
 
     public EmailRateLimiter(IOptions<RateLimitSettings> options)
     {
@@ -98,6 +101,8 @@ public sealed class EmailRateLimiter : IDisposable
         _login = Create(s.LoginPerEmailPermitLimit, s.LoginPerEmailWindowSeconds);
         _forgot = Create(s.ForgotPerEmailPermitLimit, s.ForgotPerEmailWindowSeconds);
         _register = Create(s.RegisterPerEmailPermitLimit, s.RegisterPerEmailWindowSeconds);
+        // Mirrors the row-level resend budget (SpeakerLink.ResendPerWindow/ResendWindow) as a second, per-email backstop.
+        _speakerOtp = Create(SpeakerLink.ResendPerWindow, (int)SpeakerLink.ResendWindow.TotalSeconds);
     }
 
     public bool TryLogin(string email) => TryAcquire(_login, email);
@@ -105,6 +110,9 @@ public sealed class EmailRateLimiter : IDisposable
     public bool TryForgot(string email) => TryAcquire(_forgot, email);
 
     public bool TryRegister(string email) => TryAcquire(_register, email);
+
+    /// <summary>Consumed before any token lookup, so the timing and the limit are identical for a real or bogus speaker link.</summary>
+    public bool TrySpeakerOtp(string email) => TryAcquire(_speakerOtp, email);
 
     public static string Key(string email) =>
         Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(email.Trim().ToUpperInvariant())));
@@ -128,6 +136,7 @@ public sealed class EmailRateLimiter : IDisposable
         _login.Dispose();
         _forgot.Dispose();
         _register.Dispose();
+        _speakerOtp.Dispose();
     }
 }
 
@@ -141,15 +150,21 @@ public static class PublicRateLimiting
     public const string Voucher = "public-voucher";
     public const string Register = "public-register";
     public const string Proof = "public-proof";
+    public const string SpeakerRead = "public-speaker-read";
+    public const string SpeakerCode = "public-speaker-code";
+    public const string SpeakerVerify = "public-speaker-verify";
 
     /// <summary>Endpoint policies. Voucher attempts are counted by <see cref="PublicAttemptLimiter"/> instead (shared bucket).</summary>
-    public static readonly IReadOnlyList<string> PolicyNames = [Read, Register, Proof];
+    public static readonly IReadOnlyList<string> PolicyNames = [Read, Register, Proof, SpeakerRead, SpeakerCode, SpeakerVerify];
 
     public static int PermitLimit(string policy, RateLimitSettings s) => policy switch
     {
         Read => s.PublicReadPermitLimit,
-        Voucher => s.PublicVoucherPermitLimit,
         Register => s.PublicRegisterPermitLimit,
+        Proof => s.PublicProofPermitLimit,
+        SpeakerRead => s.SpeakerReadPermitLimit,
+        SpeakerCode => s.SpeakerCodePermitLimit,
+        SpeakerVerify => s.SpeakerVerifyPermitLimit,
         _ => s.PublicProofPermitLimit,
     };
 }

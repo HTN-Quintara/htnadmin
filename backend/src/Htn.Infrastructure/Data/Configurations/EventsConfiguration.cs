@@ -18,6 +18,7 @@ internal sealed class EventConfiguration : IEntityTypeConfiguration<Event>
             t.HasCheckConstraint("ck_events_status", CheckConstraints.In("status",
                 nameof(EventStatus.Draft), nameof(EventStatus.OnSale), nameof(EventStatus.Closed)));
             t.HasCheckConstraint("ck_events_proof_mode", CheckConstraints.In("proof_mode", Enum.GetNames<ProofMode>()));
+            t.HasCheckConstraint("ck_events_travel_mode", CheckConstraints.In("travel_mode", Enum.GetNames<TravelMode>()));
             t.HasCheckConstraint("ck_events_slug",
                 $"slug ~ '{EventSlug.Pattern}' AND char_length(slug) BETWEEN {EventSlug.MinLength} AND {EventSlug.MaxLength}");
             t.HasCheckConstraint("ck_events_period", "ends_at > starts_at");
@@ -42,6 +43,7 @@ internal sealed class EventConfiguration : IEntityTypeConfiguration<Event>
         b.Property(e => e.Description).HasMaxLength(Event.DescriptionMaxLength);
         b.Property(e => e.Status).HasConversion<string>().HasMaxLength(16);
         b.Property(e => e.ProofMode).HasConversion<string>().HasMaxLength(16);
+        b.Property(e => e.TravelMode).HasConversion<string>().HasMaxLength(16);
         b.Property(e => e.EmailAccentColor).HasMaxLength(7).IsFixedLength();
         b.Property(e => e.EmailPaymentAccountIds).HasColumnType("uuid[]").HasDefaultValueSql("'{}'::uuid[]").IsRequired();
         // Two admins publishing/editing the same event at once: the second save gets 409 concurrent_change.

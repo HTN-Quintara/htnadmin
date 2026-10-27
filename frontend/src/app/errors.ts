@@ -37,6 +37,18 @@ const codeMessages: Record<string, string> = {
   not_paid: 'This registration is not paid yet.',
   too_many_uploads: 'Too many uploads for this registration. Reply to the billing email instead.',
   invalid_payment_account: "That payment account doesn't match the payment method.",
+  // Speakers (frame 22/23).
+  code_invalid: "That code is not right.",
+  code_expired: 'That code expired. Request a new code.',
+  code_locked: 'Too many attempts. Try again later.',
+  code_resend_limit: 'Too many requests. Try again later.',
+  link_expired: 'This link no longer works. Ask the Programs team for a new one.',
+  session_required: 'Your session has expired. Request a new code.',
+  event_closed: 'The confirmation window for this event has closed.',
+  no_live_link: 'There is no live link to act on.',
+  no_photo: 'There is no photo to approve.',
+  voucher_code_exhausted: 'Could not generate a voucher code. Try again.',
+  unknown_committee: 'That committee is not part of this event.',
   // Leads (frame 17).
   invalid_transition: "That move isn't allowed from the lead's current stage.",
   lead_closed: 'This lead is closed. Reopen it to edit the details.',

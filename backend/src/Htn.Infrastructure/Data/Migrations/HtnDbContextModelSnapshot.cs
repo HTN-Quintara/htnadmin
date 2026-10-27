@@ -677,6 +677,12 @@ namespace Htn.Infrastructure.Data.Migrations
                         .HasColumnType("integer")
                         .HasColumnName("task_counter");
 
+                    b.Property<string>("TravelMode")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)")
+                        .HasColumnName("travel_mode");
+
                     b.Property<DateTimeOffset?>("UpdatedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("updated_at");
@@ -733,6 +739,8 @@ namespace Htn.Infrastructure.Data.Migrations
                             t.HasCheckConstraint("ck_events_status", "status IN ('Draft', 'OnSale', 'Closed')");
 
                             t.HasCheckConstraint("ck_events_task_counter", "task_counter >= 0");
+
+                            t.HasCheckConstraint("ck_events_travel_mode", "travel_mode IN ('None', 'Plane', 'Bus', 'PlaneOrBus')");
                         });
                 });
 
@@ -2962,6 +2970,379 @@ namespace Htn.Infrastructure.Data.Migrations
                         });
                 });
 
+            modelBuilder.Entity("Htn.Domain.Speakers.SpeakerLink", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedById")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by_id");
+
+                    b.Property<Guid>("EventId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("event_id");
+
+                    b.Property<DateTimeOffset>("ExpiresAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("expires_at");
+
+                    b.Property<DateTimeOffset?>("FirstOpenedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("first_opened_at");
+
+                    b.Property<DateTimeOffset?>("LastOpenedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("last_opened_at");
+
+                    b.Property<DateTimeOffset?>("LastSubmittedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("last_submitted_at");
+
+                    b.Property<int>("OtpAttempts")
+                        .HasColumnType("integer")
+                        .HasColumnName("otp_attempts");
+
+                    b.Property<DateTimeOffset?>("OtpExpiresAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("otp_expires_at");
+
+                    b.Property<string>("OtpHash")
+                        .HasMaxLength(64)
+                        .HasColumnType("character(64)")
+                        .HasColumnName("otp_hash")
+                        .IsFixedLength();
+
+                    b.Property<DateTimeOffset?>("OtpLockedUntil")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("otp_locked_until");
+
+                    b.Property<int>("OtpSendCount")
+                        .HasColumnType("integer")
+                        .HasColumnName("otp_send_count");
+
+                    b.Property<DateTimeOffset?>("OtpSentAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("otp_sent_at");
+
+                    b.Property<DateTimeOffset?>("OtpWindowStartedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("otp_window_started_at");
+
+                    b.Property<string>("RevokeReason")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("revoke_reason");
+
+                    b.Property<DateTimeOffset?>("RevokedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("revoked_at");
+
+                    b.Property<Guid?>("RevokedById")
+                        .HasColumnType("uuid")
+                        .HasColumnName("revoked_by_id");
+
+                    b.Property<uint>("RowVersion")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.Property<int>("SendCount")
+                        .HasColumnType("integer")
+                        .HasColumnName("send_count");
+
+                    b.Property<DateTimeOffset?>("SentAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("sent_at");
+
+                    b.Property<DateTimeOffset?>("SessionExpiresAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("session_expires_at");
+
+                    b.Property<string>("SessionTokenHash")
+                        .HasMaxLength(64)
+                        .HasColumnType("character(64)")
+                        .HasColumnName("session_token_hash")
+                        .IsFixedLength();
+
+                    b.Property<Guid>("SpeakerId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("speaker_id");
+
+                    b.Property<DateTimeOffset?>("SubmittedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("submitted_at");
+
+                    b.Property<string>("TokenHash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character(64)")
+                        .HasColumnName("token_hash")
+                        .IsFixedLength();
+
+                    b.HasKey("Id")
+                        .HasName("pk_speaker_links");
+
+                    b.HasIndex("SpeakerId")
+                        .IsUnique()
+                        .HasDatabaseName("ux_speaker_links_open")
+                        .HasFilter("revoked_at IS NULL");
+
+                    b.HasIndex("TokenHash")
+                        .IsUnique()
+                        .HasDatabaseName("ux_speaker_links_token");
+
+                    b.HasIndex("EventId", "SpeakerId")
+                        .HasDatabaseName("ix_speaker_links_event");
+
+                    b.ToTable("speaker_links", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_speaker_links_expiry", "expires_at > created_at");
+
+                            t.HasCheckConstraint("ck_speaker_links_otp", "(otp_hash IS NULL) = (otp_expires_at IS NULL) AND otp_attempts BETWEEN 0 AND 5");
+
+                            t.HasCheckConstraint("ck_speaker_links_revoke", "(revoked_at IS NULL) = (revoke_reason IS NULL) AND (revoked_at IS NULL) = (revoked_by_id IS NULL)");
+
+                            t.HasCheckConstraint("ck_speaker_links_sent", "send_count >= 0 AND (sent_at IS NULL) = (send_count = 0)");
+
+                            t.HasCheckConstraint("ck_speaker_links_session", "(session_token_hash IS NULL) = (session_expires_at IS NULL)");
+
+                            t.HasCheckConstraint("ck_speaker_links_submitted", "last_submitted_at IS NULL OR submitted_at IS NOT NULL");
+
+                            t.HasCheckConstraint("ck_speaker_links_token", "token_hash ~ '^[0-9a-f]{64}$'");
+                        });
+                });
+
+            modelBuilder.Entity("Htn.Domain.Speakers.SpeakerLinkAccess", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid?>("ActorUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("actor_user_id");
+
+                    b.Property<DateTimeOffset>("At")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("at");
+
+                    b.Property<string>("ClientHint")
+                        .HasMaxLength(60)
+                        .HasColumnType("character varying(60)")
+                        .HasColumnName("client_hint");
+
+                    b.Property<Guid>("EventId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("event_id");
+
+                    b.Property<string>("IpHint")
+                        .HasMaxLength(45)
+                        .HasColumnType("character varying(45)")
+                        .HasColumnName("ip_hint");
+
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("kind");
+
+                    b.Property<Guid>("LinkId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("link_id");
+
+                    b.Property<string>("Note")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("note");
+
+                    b.Property<Guid>("SpeakerId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("speaker_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_speaker_link_access");
+
+                    b.HasIndex("LinkId", "At")
+                        .HasDatabaseName("ix_speaker_link_access_link");
+
+                    b.ToTable("speaker_link_access", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_speaker_link_access_kind", "kind IN ('LinkSent', 'Opened', 'CodeSent', 'CodeVerified', 'CodeFailed', 'CodeLocked', 'Submitted', 'Revoked')");
+                        });
+                });
+
+            modelBuilder.Entity("Htn.Domain.Speakers.SpeakerPlusOne", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("Email")
+                        .IsRequired()
+                        .HasMaxLength(254)
+                        .HasColumnType("character varying(254)")
+                        .HasColumnName("email");
+
+                    b.Property<Guid>("EventId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("event_id");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)")
+                        .HasColumnName("name");
+
+                    b.Property<string>("NameSegment")
+                        .IsRequired()
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)")
+                        .HasColumnName("name_segment");
+
+                    b.Property<string>("RemoveReason")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("remove_reason");
+
+                    b.Property<DateTimeOffset?>("RemovedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("removed_at");
+
+                    b.Property<Guid?>("RemovedById")
+                        .HasColumnType("uuid")
+                        .HasColumnName("removed_by_id");
+
+                    b.Property<bool>("SharesRoom")
+                        .HasColumnType("boolean")
+                        .HasColumnName("shares_room");
+
+                    b.Property<Guid>("SpeakerId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("speaker_id");
+
+                    b.Property<Guid?>("VoucherId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("voucher_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_speaker_plus_ones");
+
+                    b.HasIndex("SpeakerId")
+                        .IsUnique()
+                        .HasDatabaseName("ux_speaker_plus_ones_active")
+                        .HasFilter("removed_at IS NULL");
+
+                    b.ToTable("speaker_plus_ones", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_speaker_plus_ones_removed", "(removed_at IS NULL) = (remove_reason IS NULL)");
+                        });
+                });
+
+            modelBuilder.Entity("Htn.Domain.Speakers.SpeakerTravel", b =>
+                {
+                    b.Property<Guid>("SpeakerId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("speaker_id");
+
+                    b.Property<DateOnly?>("ArrivalDate")
+                        .HasColumnType("date")
+                        .HasColumnName("arrival_date");
+
+                    b.Property<string>("BusEta")
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
+                        .HasColumnName("bus_eta");
+
+                    b.Property<string>("BusFrom")
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)")
+                        .HasColumnName("bus_from");
+
+                    b.Property<DateTimeOffset?>("ConsentAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("consent_at");
+
+                    b.Property<string>("ConsentVersion")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("consent_version");
+
+                    b.Property<DateOnly?>("DepartureDate")
+                        .HasColumnType("date")
+                        .HasColumnName("departure_date");
+
+                    b.Property<Guid>("EventId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("event_id");
+
+                    b.Property<string>("FlyingFrom")
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)")
+                        .HasColumnName("flying_from");
+
+                    b.Property<string>("IdFullName")
+                        .HasMaxLength(160)
+                        .HasColumnType("character varying(160)")
+                        .HasColumnName("id_full_name");
+
+                    b.Property<DateTimeOffset?>("LastSubmittedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("last_submitted_at");
+
+                    b.Property<string>("NeedsNotes")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("needs_notes");
+
+                    b.Property<bool>("NeedsTerminalPickup")
+                        .HasColumnType("boolean")
+                        .HasColumnName("needs_terminal_pickup");
+
+                    b.Property<string>("PreferredArrivalTime")
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
+                        .HasColumnName("preferred_arrival_time");
+
+                    b.Property<DateTimeOffset?>("PurgedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("purged_at");
+
+                    b.Property<string>("RoomNote")
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)")
+                        .HasColumnName("room_note");
+
+                    b.Property<DateTimeOffset?>("SubmittedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("submitted_at");
+
+                    b.HasKey("SpeakerId")
+                        .HasName("pk_speaker_travel");
+
+                    b.HasIndex("EventId")
+                        .HasDatabaseName("ix_speaker_travel_event_id");
+
+                    b.ToTable("speaker_travel", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_speaker_travel_consent", "(submitted_at IS NULL) OR (consent_at IS NOT NULL AND consent_version IS NOT NULL)");
+
+                            t.HasCheckConstraint("ck_speaker_travel_dates", "arrival_date IS NULL OR departure_date IS NULL OR departure_date >= arrival_date");
+
+                            t.HasCheckConstraint("ck_speaker_travel_purged", "purged_at IS NULL OR (flying_from IS NULL AND preferred_arrival_time IS NULL AND id_full_name IS NULL)");
+                        });
+                });
+
             modelBuilder.Entity("Htn.Domain.Sponsors.EventPartner", b =>
                 {
                     b.Property<Guid>("Id")
@@ -5025,6 +5406,60 @@ namespace Htn.Infrastructure.Data.Migrations
                         .HasForeignKey("PhotoFileId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .HasConstraintName("fk_speakers_stored_files_photo_file_id");
+                });
+
+            modelBuilder.Entity("Htn.Domain.Speakers.SpeakerLink", b =>
+                {
+                    b.HasOne("Htn.Domain.Events.Event", null)
+                        .WithMany()
+                        .HasForeignKey("EventId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_speaker_links_events_event_id");
+
+                    b.HasOne("Htn.Domain.Speakers.Speaker", null)
+                        .WithMany()
+                        .HasForeignKey("SpeakerId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_speaker_links_speakers_speaker_id");
+                });
+
+            modelBuilder.Entity("Htn.Domain.Speakers.SpeakerLinkAccess", b =>
+                {
+                    b.HasOne("Htn.Domain.Speakers.SpeakerLink", null)
+                        .WithMany()
+                        .HasForeignKey("LinkId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_speaker_link_access_speaker_links_link_id");
+                });
+
+            modelBuilder.Entity("Htn.Domain.Speakers.SpeakerPlusOne", b =>
+                {
+                    b.HasOne("Htn.Domain.Speakers.Speaker", null)
+                        .WithMany()
+                        .HasForeignKey("SpeakerId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_speaker_plus_ones_speakers_speaker_id");
+                });
+
+            modelBuilder.Entity("Htn.Domain.Speakers.SpeakerTravel", b =>
+                {
+                    b.HasOne("Htn.Domain.Events.Event", null)
+                        .WithMany()
+                        .HasForeignKey("EventId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_speaker_travel_events_event_id");
+
+                    b.HasOne("Htn.Domain.Speakers.Speaker", null)
+                        .WithOne()
+                        .HasForeignKey("Htn.Domain.Speakers.SpeakerTravel", "SpeakerId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_speaker_travel_speakers_speaker_id");
                 });
 
             modelBuilder.Entity("Htn.Domain.Sponsors.EventPartner", b =>

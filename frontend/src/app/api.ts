@@ -128,6 +128,8 @@ export type ApiOptions = {
   method?: HttpMethod
   body?: unknown
   signal?: AbortSignal
+  /** Extra headers beyond Accept/Content-Type/X-CSRF-TOKEN, e.g. the speaker public form's session header. */
+  headers?: Record<string, string>
 }
 
 export type ApiResponse = { status: number; data: unknown }
@@ -167,6 +169,7 @@ export async function apiRequest(path: string, options: ApiOptions = {}, retried
   const form = options.body instanceof FormData ? options.body : null
   if (options.body !== undefined && !form) headers['Content-Type'] = 'application/json'
   if (method !== 'GET') headers[CSRF_HEADER] = await getCsrfToken()
+  if (options.headers) Object.assign(headers, options.headers)
 
   const res = await fetch(toUrl(path), {
     method,

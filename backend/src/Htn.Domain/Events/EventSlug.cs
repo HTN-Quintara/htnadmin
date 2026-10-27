@@ -54,7 +54,7 @@ public static partial class EventSlug
     }
 
     /// <summary>Accented Latin letters (Filipino and Spanish names, mostly) to their plain ASCII spelling.</summary>
-    private static readonly Dictionary<char, string> Fold = BuildFold();
+    internal static readonly Dictionary<char, string> Fold = BuildFold();
 
     private static Dictionary<char, string> BuildFold()
     {

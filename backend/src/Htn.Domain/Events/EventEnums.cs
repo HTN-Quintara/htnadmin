@@ -38,6 +38,15 @@ public enum TicketStatus
     Inactive,
 }
 
+/// <summary>How speakers travel to the event, driving the public confirmation form's adaptive fieldset.</summary>
+public enum TravelMode
+{
+    None,
+    Plane,
+    Bus,
+    PlaneOrBus,
+}
+
 public enum VoucherKind
 {
     Percent,

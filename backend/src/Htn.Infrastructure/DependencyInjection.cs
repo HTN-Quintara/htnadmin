@@ -34,6 +34,7 @@ public static class DependencyInjection
         services.AddOptions<AccountTokenOptions>().BindConfiguration(AccountTokenOptions.Section);
         services.AddOptions<AppLinkOptions>().BindConfiguration(AppLinkOptions.Section);
         services.AddOptions<OutboxOptions>().BindConfiguration(OutboxOptions.Section);
+        services.AddOptions<Htn.Infrastructure.Retention.RetentionOptions>().BindConfiguration(Htn.Infrastructure.Retention.RetentionOptions.Section);
         services.AddOptions<MailtrapOptions>().Configure<IConfiguration>((o, c) =>
         {
             var from = MailtrapOptions.FromConfiguration(c);
@@ -51,9 +52,12 @@ public static class DependencyInjection
         services.AddScoped<RegistrationEmails>();
         services.AddScoped<TaskEmails>();
         services.AddScoped<FinanceEmails>();
+        services.AddScoped<SpeakerEmails>();
         services.AddSingleton<ITicketToken, TicketToken>();
         services.AddScoped<OutboxProcessor>();
         services.AddHostedService<OutboxWorker>();
+        services.AddScoped<Htn.Infrastructure.Retention.SpeakerDataRetention>();
+        services.AddHostedService<Htn.Infrastructure.Retention.SpeakerDataRetentionWorker>();
 
         if (MailtrapOptions.FromConfiguration(configuration).IsConfigured)
         {

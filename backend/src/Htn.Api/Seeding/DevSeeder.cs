@@ -57,6 +57,7 @@ public static class DevSeeder
         await EnsureSponsorsAsync(db, clock, ct);
         await EnsureLeadsAsync(db, clock, ct);
         await EnsureAgendaAsync(db, clock, ct);
+        await EnsureSpeakerTravelModeAsync(db, clock, ct);
         logger.LogInformation("Development seed data is in place");
     }
 
@@ -443,6 +444,15 @@ public static class DevSeeder
         var mae = Speaker.Create(ev.Id, "Mae Torres", "mae.torres@devtools.io", "DevTools Inc.", Guid.Empty, now);
         db.Speakers.Add(mae);
         db.SessionSpeakers.Add(SessionSpeaker.Create(workshopSession.Id, mae.Id, ev.Id, SessionSpeakerRole.Speaker, 0));
+        await db.SaveChangesAsync(ct);
+    }
+
+    /// <summary>Sets HTN Con 2026's travel mode to Plane (frame 05/22/23), so the public form shows the flight fields.</summary>
+    private static async Task EnsureSpeakerTravelModeAsync(HtnDbContext db, TimeProvider clock, CancellationToken ct)
+    {
+        var ev = await db.Events.FirstOrDefaultAsync(e => e.Slug == SampleEventSlug, ct);
+        if (ev is null || ev.TravelMode != Htn.Domain.Events.TravelMode.None) return;
+        ev.UpdateTravelSettings(Htn.Domain.Events.TravelMode.Plane, clock.GetUtcNow(), null);
         await db.SaveChangesAsync(ct);
     }
 

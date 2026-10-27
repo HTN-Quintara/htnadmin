@@ -53,6 +53,7 @@ public class HtnApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
         builder.UseSetting("ConnectionStrings:Db", _database!.ConnectionString);
         builder.UseSetting("Database:MigrateOnStartup", "false");
         builder.UseSetting("Outbox:Enabled", "false");
+        builder.UseSetting("Retention:Enabled", "false");
         builder.UseSetting("RateLimiting:AuthPermitLimit", "100000");
         builder.UseSetting("RateLimiting:LoginPerEmailPermitLimit", "100000");
         builder.UseSetting("RateLimiting:ForgotPerEmailPermitLimit", "100000");

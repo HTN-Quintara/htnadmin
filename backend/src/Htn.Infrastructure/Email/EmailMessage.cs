@@ -32,4 +32,7 @@ public static class EmailCategories
     public const string Registration = "registration";
     public const string TaskMention = "task-mention";
     public const string Finance = "finance";
+    public const string SpeakerLink = "speaker-link";
+    public const string SpeakerOtp = "speaker-otp";
+    public const string Voucher = "voucher";
 }

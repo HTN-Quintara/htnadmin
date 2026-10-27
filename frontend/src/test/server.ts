@@ -34,6 +34,7 @@ export const boardMe: Me = {
     'Leaderboard.View',
     'Sponsors.Manage',
     'Leads.Manage',
+    'Speakers.Manage',
   ],
   preferences: { mode: 'system', textSize: 'default', density: 'comfortable' },
 }

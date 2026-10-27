@@ -28,6 +28,7 @@ public sealed class OutboxProcessor(
     RegistrationEmails registrationEmails,
     TaskEmails taskEmails,
     FinanceEmails financeEmails,
+    SpeakerEmails speakerEmails,
     TimeProvider clock,
     IOptions<AppLinkOptions> links,
     IOptions<AccountTokenOptions> tokenOptions,
@@ -110,6 +111,18 @@ public sealed class OutboxProcessor(
                 return await financeEmails.ExpenseRequestDecisionAsync(Payload<ExpenseRequestDecisionEmailPayload>(message));
             case EmailTypes.BudgetSaved:
                 return await financeEmails.BudgetSavedAsync(Payload<BudgetSavedEmailPayload>(message));
+            case EmailTypes.SpeakerLink:
+            {
+                var token = message.Secret ?? throw new InvalidOperationException("Speaker link token missing.");
+                return await speakerEmails.SpeakerLinkAsync(Payload<SpeakerLinkEmailPayload>(message), token);
+            }
+            case EmailTypes.SpeakerOtp:
+            {
+                var code = message.Secret ?? throw new InvalidOperationException("Speaker OTP code missing.");
+                return await speakerEmails.SpeakerOtpAsync(Payload<SpeakerOtpEmailPayload>(message), code);
+            }
+            case EmailTypes.PlusOneVoucher:
+                return await speakerEmails.PlusOneVoucherAsync(Payload<PlusOneVoucherEmailPayload>(message));
             case RegistrationEmailTypes.Test:
                 return await registrationEmails.TestAsync(Payload<EventTestEmailPayload>(message));
             default:
@@ -146,6 +159,18 @@ public sealed class OutboxProcessor(
     public static OutboxMessage BudgetSavedEmail(Guid eventId, Guid versionId, Guid personId, DateTimeOffset at) =>
         OutboxMessage.Create(EmailTypes.BudgetSaved,
             JsonSerializer.Serialize(new BudgetSavedEmailPayload(eventId, versionId, personId), Json), null, at);
+
+    /// <summary>The speaker confirmation link (initial send or resend). The raw token travels only in Secret.</summary>
+    public static OutboxMessage SpeakerLinkEmail(Guid linkId, string rawToken, DateTimeOffset at) =>
+        OutboxMessage.Create(EmailTypes.SpeakerLink, JsonSerializer.Serialize(new SpeakerLinkEmailPayload(linkId), Json), rawToken, at);
+
+    /// <summary>The 6-digit email OTP. The raw code travels only in Secret, never in the payload.</summary>
+    public static OutboxMessage SpeakerOtpEmail(Guid linkId, string code, DateTimeOffset at) =>
+        OutboxMessage.Create(EmailTypes.SpeakerOtp, JsonSerializer.Serialize(new SpeakerOtpEmailPayload(linkId), Json), code, at);
+
+    /// <summary>A speaker's plus-one voucher, emailed on submit.</summary>
+    public static OutboxMessage PlusOneVoucherEmail(Guid plusOneId, DateTimeOffset at) =>
+        OutboxMessage.Create(EmailTypes.PlusOneVoucher, JsonSerializer.Serialize(new PlusOneVoucherEmailPayload(plusOneId), Json), null, at);
 
     public static OutboxMessage InviteEmail(InviteEmailPayload payload, string rawToken, DateTimeOffset at) =>
         OutboxMessage.Create(EmailTypes.Invite, JsonSerializer.Serialize(payload, Json), rawToken, at);

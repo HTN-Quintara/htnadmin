@@ -22,17 +22,19 @@ public sealed class ApiClient(HttpClient http)
 
     public Task<HttpResponseMessage> GetAsync(string url) => http.GetAsync(url);
 
-    public Task<HttpResponseMessage> PostAsync(string url, object? body = null, bool csrf = true) => SendAsync(HttpMethod.Post, url, body, csrf);
+    public Task<HttpResponseMessage> PostAsync(string url, object? body = null, bool csrf = true, IReadOnlyDictionary<string, string>? headers = null) =>
+        SendAsync(HttpMethod.Post, url, body, csrf, headers);
 
     public Task<HttpResponseMessage> PutAsync(string url, object? body = null, bool csrf = true) => SendAsync(HttpMethod.Put, url, body, csrf);
 
     public Task<HttpResponseMessage> DeleteAsync(string url, object? body = null, bool csrf = true) => SendAsync(HttpMethod.Delete, url, body, csrf);
 
-    public async Task<HttpResponseMessage> SendAsync(HttpMethod method, string url, object? body, bool csrf)
+    public async Task<HttpResponseMessage> SendAsync(HttpMethod method, string url, object? body, bool csrf, IReadOnlyDictionary<string, string>? headers = null)
     {
         using var req = new HttpRequestMessage(method, url);
         if (body is not null) req.Content = JsonContent.Create(body, options: Json);
         if (csrf) req.Headers.Add("X-CSRF-TOKEN", await CsrfTokenAsync());
+        if (headers is not null) foreach (var (k, v) in headers) req.Headers.Add(k, v);
         return await http.SendAsync(req);
     }
 

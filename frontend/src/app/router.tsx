@@ -27,6 +27,10 @@ export const routes: RouteObject[] = [
         lazy: async () => ({ Component: (await import('@/features/registrations/public/ProofUploadPage')).ProofUploadPage }),
       },
       {
+        path: '/s/:token',
+        lazy: async () => ({ Component: (await import('@/features/speakers/public/SpeakerFormPage')).SpeakerFormPage }),
+      },
+      {
         element: <RedirectIfSignedIn />,
         children: [
           { path: '/login', lazy: async () => ({ Component: (await import('@/features/auth/LoginPage')).LoginPage }) },
@@ -96,7 +100,19 @@ export const routes: RouteObject[] = [
                     children: [
                       { index: true, element: <Navigate to="details" replace /> },
                       { path: 'details', lazy: async () => ({ Component: (await import('@/features/events/EventDetailsPage')).EventDetailsPage }) },
-                      { path: 'agenda', lazy: async () => ({ Component: (await import('@/features/events/agenda/AgendaPage')).AgendaPage }) },
+                      {
+                        path: 'agenda',
+                        children: [
+                          { index: true, lazy: async () => ({ Component: (await import('@/features/events/agenda/AgendaPage')).AgendaPage }) },
+                          {
+                            path: 'speakers',
+                            element: <RequirePolicy policy={Policies.SpeakersManage} />,
+                            children: [
+                              { index: true, lazy: async () => ({ Component: (await import('@/features/speakers/SpeakersPage')).SpeakersPage }) },
+                            ],
+                          },
+                        ],
+                      },
                       {
                         path: 'committees',
                         children: [{ index: true, lazy: async () => ({ Component: (await import('@/features/committees/CommitteesPage')).CommitteesPage }) }],

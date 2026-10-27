@@ -37,6 +37,13 @@ public sealed class RateLimitSettings
     public int PublicProofPermitLimit { get; set; } = 20;
     public int PublicWindowSeconds { get; set; } = 60;
 
+    /// <summary>Public speaker-link reads per IP, per window of <see cref="PublicWindowSeconds"/>.</summary>
+    public int SpeakerReadPermitLimit { get; set; } = 60;
+    /// <summary>OTP (re)send requests per IP, per window -- the row-level resend budget is the real backstop.</summary>
+    public int SpeakerCodePermitLimit { get; set; } = 10;
+    /// <summary>OTP verify attempts per IP, per window -- the row-level 5-try lock is the real backstop.</summary>
+    public int SpeakerVerifyPermitLimit { get; set; } = 20;
+
     /// <summary>Check-in scans and manual check-ins per signed-in user, per window (a busy desk does about one every 3 s).</summary>
     public int CheckInPermitLimit { get; set; } = 120;
 

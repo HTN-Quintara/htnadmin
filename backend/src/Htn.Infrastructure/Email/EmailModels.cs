@@ -14,6 +14,15 @@ public static class EmailTypes
 
     /// <summary>The CFO saved a new version of an event budget (frame 25). One message per other board member.</summary>
     public const string BudgetSaved = "email.budget_saved";
+
+    /// <summary>The initial speaker confirmation link, or a resend (frame 22/23). The raw token travels in Secret.</summary>
+    public const string SpeakerLink = "email.speaker_link";
+
+    /// <summary>The 6-digit email OTP for a speaker confirmation link (frame 23).</summary>
+    public const string SpeakerOtp = "email.speaker_otp";
+
+    /// <summary>A speaker's plus-one 50%-off registration voucher (frame 23).</summary>
+    public const string PlusOneVoucher = "email.plus_one_voucher";
 }
 
 /// <summary>Payload stored in the outbox. The raw token travels separately in <c>OutboxMessage.Secret</c>.</summary>
@@ -35,6 +44,13 @@ public sealed record ExpenseRequestDecisionEmailPayload(Guid RequestId);
 
 /// <summary>One board member's copy of "the CFO saved a budget version".</summary>
 public sealed record BudgetSavedEmailPayload(Guid EventId, Guid VersionId, Guid PersonId);
+
+/// <summary>Only the link id travels: the renderer re-reads current state (revoked? still the live link?) before sending.</summary>
+public sealed record SpeakerLinkEmailPayload(Guid LinkId);
+
+public sealed record SpeakerOtpEmailPayload(Guid LinkId);
+
+public sealed record PlusOneVoucherEmailPayload(Guid PlusOneId);
 
 public static class EmailText
 {

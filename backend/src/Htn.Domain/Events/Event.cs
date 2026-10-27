@@ -42,6 +42,9 @@ public sealed class Event
     public bool PublicPage { get; private set; }
     public ProofMode ProofMode { get; private set; }
 
+    /// <summary>How speakers travel (frame 05/22/23); defaults to None until set.</summary>
+    public TravelMode TravelMode { get; private set; }
+
     /// <summary>The yearly flagship event; membership for <see cref="MembershipYear"/> is sold at it.</summary>
     public bool IsMainEvent { get; private set; }
 
@@ -84,6 +87,7 @@ public sealed class Event
             GroupRegistration = true,
             PublicPage = true,
             ProofMode = ProofMode.Upload,
+            TravelMode = TravelMode.None,
             CreatedAt = at,
             CreatedById = actorId,
         };
@@ -137,6 +141,13 @@ public sealed class Event
         IsMainEvent = isMainEvent;
         MembershipFee = isMainEvent ? membershipFee : null;
         MembershipYear = isMainEvent ? membershipYear : null;
+        Touch(at, actorId);
+    }
+
+    public void UpdateTravelSettings(TravelMode travelMode, DateTimeOffset at, Guid? actorId)
+    {
+        if (!Enum.IsDefined(travelMode)) throw new DomainException("Unknown travel mode.");
+        TravelMode = travelMode;
         Touch(at, actorId);
     }
 

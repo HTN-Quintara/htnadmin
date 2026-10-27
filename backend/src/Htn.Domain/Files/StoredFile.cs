@@ -79,11 +79,18 @@ public static class StoredFilePurposes
     /// </summary>
     public const string SponsorLogo = "sponsor_logo";
 
+    /// <summary>
+    /// A speaker's photo (frame 22/23). Neither public set until <c>photo_approved_at</c> is stamped; a public route
+    /// then serves it for the agenda and social posts.
+    /// </summary>
+    public const string SpeakerPhoto = "speaker_photo";
+
     public const long EventCoverMaxBytes = 2 * 1024 * 1024;
     public const long PaymentProofMaxBytes = 5 * 1024 * 1024;
     public const long TaskAttachmentMaxBytes = 5 * 1024 * 1024;
     public const long FinanceReceiptMaxBytes = 5 * 1024 * 1024;
     public const long SponsorLogoMaxBytes = 1024 * 1024;
+    public const long SpeakerPhotoMaxBytes = 2 * 1024 * 1024;
 
     /// <summary>Largest width or height of a proof image (phone screenshots and camera photos).</summary>
     public const int PaymentProofMaxDimension = 8192;
@@ -101,6 +108,7 @@ public static class StoredFilePurposes
         TaskAttachment => TaskAttachmentMaxBytes,
         FinanceReceipt => FinanceReceiptMaxBytes,
         SponsorLogo => SponsorLogoMaxBytes,
+        SpeakerPhoto => SpeakerPhotoMaxBytes,
         _ => StoredFile.MaxBytes,
     };
 }

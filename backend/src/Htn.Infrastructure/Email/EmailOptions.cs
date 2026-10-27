@@ -66,4 +66,7 @@ public sealed class AppLinkOptions
     /// <summary>A partner group registration link: the public form with the partner token, which pre-fills the company.</summary>
     public string PartnerRegister(string slug, string token) =>
         $"{PublicBaseUrl.TrimEnd('/')}/r/{Uri.EscapeDataString(slug)}?p={Uri.EscapeDataString(token)}";
+
+    /// <summary>The public speaker confirmation form (frame 23).</summary>
+    public string SpeakerForm(string token) => $"{PublicBaseUrl.TrimEnd('/')}/s/{Uri.EscapeDataString(token)}";
 }
