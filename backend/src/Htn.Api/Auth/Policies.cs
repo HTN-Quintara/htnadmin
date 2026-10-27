@@ -116,12 +116,29 @@ public static class Policies
                     _ => Task.FromResult(false),
                 })));
 
+        // Suppliers.Manage (Phase 7C): board only, like Directory.Manage/Invitations.Manage.
+        auth.AddPolicy(SuppliersManage, p => p.RequireAuthenticatedUser().RequireRole(Roles.Board));
+        // Suppliers.View: board, or any committee lead of any event — same shape as Directory.View, since a
+        // supplier's contacts/docs/reviews aren't tied to one event either.
+        auth.AddPolicy(SuppliersView, p => p.RequireAuthenticatedUser().RequireRole(Roles.Board, Roles.Goon)
+            .RequireAssertion(async ctx => ctx.User.IsInRole(Roles.Board)
+                || await (ctx.Resource switch
+                {
+                    HttpContext http => http.RequestServices.GetRequiredService<ICommitteeContext>().LeadsAnythingAsync(),
+                    _ => Task.FromResult(false),
+                })));
+        // Suppliers.Rate: resource-scoped (see CommitteeScopedHandler/CommitteeAccess.SuppliersRate). The role list is
+        // the coarse route gate — board or any goon who leads something, anywhere; the rating endpoint re-runs this
+        // same policy against the hire's real OwnerCommitteeId once it has loaded the row, which is the precise check.
+        auth.AddPolicy(SuppliersRate, p => p.RequireAuthenticatedUser().RequireRole(Roles.Board, Roles.Goon)
+            .AddRequirements(new CommitteeScopedRequirement(CommitteeAccess.SuppliersRate)));
+
         string[] implemented =
         [
             PeopleView, PeopleManage, SettingsPersonal, EventsView, CheckInScan,
             FinanceView, FinanceRequest, FinancePost, FinanceApprove,
             CommitteesManageMembers, TasksManage, TasksWork, TasksViewBoard, LeaderboardView, SpeakersManage,
-            DirectoryManage, DirectoryView, InvitationsManage,
+            DirectoryManage, DirectoryView, InvitationsManage, SuppliersManage, SuppliersView, SuppliersRate,
         ];
         foreach (var name in All.Except(implemented))
             auth.AddPolicy(name, p => p.RequireAuthenticatedUser().RequireRole(Roles.Board));

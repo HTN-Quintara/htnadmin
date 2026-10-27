@@ -4403,6 +4403,359 @@ namespace Htn.Infrastructure.Data.Migrations
                         });
                 });
 
+            modelBuilder.Entity("Htn.Domain.Suppliers.EventSupplier", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("CategoryId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("category_id");
+
+                    b.Property<decimal?>("ContractAmount")
+                        .HasPrecision(12, 2)
+                        .HasColumnType("numeric(12,2)")
+                        .HasColumnName("contract_amount");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedById")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by_id");
+
+                    b.Property<Guid>("EventId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("event_id");
+
+                    b.Property<decimal?>("NextPaymentAmount")
+                        .HasPrecision(12, 2)
+                        .HasColumnType("numeric(12,2)")
+                        .HasColumnName("next_payment_amount");
+
+                    b.Property<DateOnly?>("NextPaymentDue")
+                        .HasColumnType("date")
+                        .HasColumnName("next_payment_due");
+
+                    b.Property<string>("Note")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("note");
+
+                    b.Property<Guid>("OwnerCommitteeId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("owner_committee_id");
+
+                    b.Property<decimal?>("PaidAmount")
+                        .HasPrecision(12, 2)
+                        .HasColumnType("numeric(12,2)")
+                        .HasColumnName("paid_amount");
+
+                    b.Property<uint>("RowVersion")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)")
+                        .HasColumnName("status");
+
+                    b.Property<Guid>("SupplierId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("supplier_id");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedById")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by_id");
+
+                    b.Property<string>("VoidReason")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("void_reason");
+
+                    b.Property<DateTimeOffset?>("VoidedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("voided_at");
+
+                    b.Property<Guid?>("VoidedById")
+                        .HasColumnType("uuid")
+                        .HasColumnName("voided_by_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_event_suppliers");
+
+                    b.HasIndex("CategoryId")
+                        .HasDatabaseName("ix_event_suppliers_category_id");
+
+                    b.HasIndex("EventId")
+                        .HasDatabaseName("ix_event_suppliers_event");
+
+                    b.HasIndex("OwnerCommitteeId")
+                        .HasDatabaseName("ix_event_suppliers_owner_committee");
+
+                    b.HasIndex("SupplierId")
+                        .HasDatabaseName("ix_event_suppliers_supplier_id");
+
+                    b.HasIndex("EventId", "SupplierId")
+                        .IsUnique()
+                        .HasDatabaseName("ux_event_suppliers_event_supplier")
+                        .HasFilter("voided_at IS NULL");
+
+                    b.ToTable("event_suppliers", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_event_suppliers_money", "(contract_amount IS NULL OR contract_amount >= 0) AND (paid_amount IS NULL OR paid_amount >= 0) AND (next_payment_amount IS NULL OR next_payment_amount >= 0)");
+
+                            t.HasCheckConstraint("ck_event_suppliers_status", "status IN ('Quotation', 'Booked', 'DepositPaid', 'FullyPaid')");
+
+                            t.HasCheckConstraint("ck_event_suppliers_void", "(voided_at IS NULL) = (void_reason IS NULL) AND (voided_at IS NULL) = (voided_by_id IS NULL)");
+                        });
+                });
+
+            modelBuilder.Entity("Htn.Domain.Suppliers.Supplier", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("BankDetails")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("bank_details");
+
+                    b.Property<string>("Category")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)")
+                        .HasColumnName("category");
+
+                    b.Property<string>("ContactEmail")
+                        .HasMaxLength(254)
+                        .HasColumnType("character varying(254)")
+                        .HasColumnName("contact_email");
+
+                    b.Property<string>("ContactName")
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)")
+                        .HasColumnName("contact_name");
+
+                    b.Property<string>("ContactPhone")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("contact_phone");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedById")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by_id");
+
+                    b.Property<string>("DeactivateReason")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("deactivate_reason");
+
+                    b.Property<DateTimeOffset?>("DeactivatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("deactivated_at");
+
+                    b.Property<Guid?>("DeactivatedById")
+                        .HasColumnType("uuid")
+                        .HasColumnName("deactivated_by_id");
+
+                    b.Property<bool>("IssuesOr")
+                        .HasColumnType("boolean")
+                        .HasColumnName("issues_or");
+
+                    b.Property<Guid?>("LogoFileId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("logo_file_id");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(160)
+                        .HasColumnType("character varying(160)")
+                        .HasColumnName("name");
+
+                    b.Property<string>("NameKey")
+                        .IsRequired()
+                        .HasMaxLength(160)
+                        .HasColumnType("character varying(160)")
+                        .HasColumnName("name_key");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)")
+                        .HasColumnName("notes");
+
+                    b.Property<uint>("RowVersion")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.Property<string>("Tin")
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
+                        .HasColumnName("tin");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedById")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_suppliers");
+
+                    b.HasIndex("Category")
+                        .HasDatabaseName("ix_suppliers_category");
+
+                    b.HasIndex("LogoFileId")
+                        .HasDatabaseName("ix_suppliers_logo_file_id");
+
+                    b.HasIndex("NameKey")
+                        .IsUnique()
+                        .HasDatabaseName("ux_suppliers_name_key")
+                        .HasFilter("deactivated_at IS NULL");
+
+                    b.ToTable("suppliers", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_suppliers_category", "category IN ('Venue', 'Catering', 'Printing', 'TechAV', 'Merch', 'Transport')");
+
+                            t.HasCheckConstraint("ck_suppliers_deactivated", "(deactivated_at IS NULL) = (deactivate_reason IS NULL) AND (deactivated_at IS NULL) = (deactivated_by_id IS NULL)");
+                        });
+                });
+
+            modelBuilder.Entity("Htn.Domain.Suppliers.SupplierDocument", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("FileId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("file_id");
+
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)")
+                        .HasColumnName("kind");
+
+                    b.Property<uint>("RowVersion")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.Property<Guid>("SupplierId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("supplier_id");
+
+                    b.Property<DateTimeOffset>("UploadedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("uploaded_at");
+
+                    b.Property<Guid?>("UploadedById")
+                        .HasColumnType("uuid")
+                        .HasColumnName("uploaded_by_id");
+
+                    b.Property<string>("VoidReason")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("void_reason");
+
+                    b.Property<DateTimeOffset?>("VoidedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("voided_at");
+
+                    b.Property<Guid?>("VoidedById")
+                        .HasColumnType("uuid")
+                        .HasColumnName("voided_by_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_supplier_documents");
+
+                    b.HasIndex("FileId")
+                        .HasDatabaseName("ix_supplier_documents_file_id");
+
+                    b.HasIndex("SupplierId")
+                        .HasDatabaseName("ix_supplier_documents_supplier");
+
+                    b.ToTable("supplier_documents", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_supplier_documents_kind", "kind IN ('Bir2303', 'BusinessPermit', 'Other')");
+
+                            t.HasCheckConstraint("ck_supplier_documents_void", "(voided_at IS NULL) = (void_reason IS NULL) AND (voided_at IS NULL) = (voided_by_id IS NULL)");
+                        });
+                });
+
+            modelBuilder.Entity("Htn.Domain.Suppliers.SupplierRating", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid>("EventSupplierId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("event_supplier_id");
+
+                    b.Property<string>("HireAgain")
+                        .IsRequired()
+                        .HasMaxLength(8)
+                        .HasColumnType("character varying(8)")
+                        .HasColumnName("hire_again");
+
+                    b.Property<string>("Note")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("note");
+
+                    b.Property<Guid>("RaterId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("rater_id");
+
+                    b.Property<int>("Stars")
+                        .HasColumnType("integer")
+                        .HasColumnName("stars");
+
+                    b.Property<string>("Tags")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("tags");
+
+                    b.HasKey("Id")
+                        .HasName("pk_supplier_ratings");
+
+                    b.HasIndex("EventSupplierId", "RaterId")
+                        .IsUnique()
+                        .HasDatabaseName("ux_supplier_ratings_hire_rater");
+
+                    b.ToTable("supplier_ratings", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_supplier_ratings_hire_again", "hire_again IN ('Yes', 'Maybe', 'No')");
+
+                            t.HasCheckConstraint("ck_supplier_ratings_stars", "stars BETWEEN 1 AND 5");
+                        });
+                });
+
             modelBuilder.Entity("Htn.Domain.Tasks.PointsAward", b =>
                 {
                     b.Property<Guid>("Id")
@@ -6114,6 +6467,73 @@ namespace Htn.Infrastructure.Data.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
                         .HasConstraintName("fk_sponsor_tiers_events_event_id");
+                });
+
+            modelBuilder.Entity("Htn.Domain.Suppliers.EventSupplier", b =>
+                {
+                    b.HasOne("Htn.Domain.Finance.LedgerCategory", null)
+                        .WithMany()
+                        .HasForeignKey("CategoryId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_event_suppliers_ledger_categories_category_id");
+
+                    b.HasOne("Htn.Domain.Events.Event", null)
+                        .WithMany()
+                        .HasForeignKey("EventId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_event_suppliers_events_event_id");
+
+                    b.HasOne("Htn.Domain.Committees.Committee", null)
+                        .WithMany()
+                        .HasForeignKey("OwnerCommitteeId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_event_suppliers_committees_owner_committee_id");
+
+                    b.HasOne("Htn.Domain.Suppliers.Supplier", null)
+                        .WithMany()
+                        .HasForeignKey("SupplierId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_event_suppliers_suppliers_supplier_id");
+                });
+
+            modelBuilder.Entity("Htn.Domain.Suppliers.Supplier", b =>
+                {
+                    b.HasOne("Htn.Domain.Files.StoredFile", null)
+                        .WithMany()
+                        .HasForeignKey("LogoFileId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_suppliers_stored_files_logo_file_id");
+                });
+
+            modelBuilder.Entity("Htn.Domain.Suppliers.SupplierDocument", b =>
+                {
+                    b.HasOne("Htn.Domain.Files.StoredFile", null)
+                        .WithMany()
+                        .HasForeignKey("FileId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_supplier_documents_stored_files_file_id");
+
+                    b.HasOne("Htn.Domain.Suppliers.Supplier", null)
+                        .WithMany()
+                        .HasForeignKey("SupplierId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_supplier_documents_suppliers_supplier_id");
+                });
+
+            modelBuilder.Entity("Htn.Domain.Suppliers.SupplierRating", b =>
+                {
+                    b.HasOne("Htn.Domain.Suppliers.EventSupplier", null)
+                        .WithMany()
+                        .HasForeignKey("EventSupplierId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_supplier_ratings_event_suppliers_event_supplier_id");
                 });
 
             modelBuilder.Entity("Htn.Domain.Tasks.PointsAward", b =>

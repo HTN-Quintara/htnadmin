@@ -170,6 +170,11 @@ export const routes: RouteObject[] = [
                         ],
                       },
                       {
+                        path: 'suppliers',
+                        element: <RequirePolicy policy={Policies.SuppliersView} />,
+                        children: [{ index: true, lazy: async () => ({ Component: (await import('@/features/suppliers/EventSuppliersPage')).EventSuppliersPage }) }],
+                      },
+                      {
                         path: 'check-in',
                         element: <RequirePolicy policy={Policies.CheckInScan} />,
                         children: [{ index: true, lazy: async () => ({ Component: (await import('@/features/checkin/CheckInPage')).CheckInPage }) }],
@@ -182,7 +187,19 @@ export const routes: RouteObject[] = [
               {
                 path: '/directory',
                 element: <RequirePolicy policy={Policies.DirectoryView} />,
-                children: [{ index: true, lazy: async () => ({ Component: (await import('@/features/directory/DirectoryPage')).DirectoryPage }) }],
+                children: [
+                  { index: true, lazy: async () => ({ Component: (await import('@/features/directory/DirectoryPage')).DirectoryPage }) },
+                  {
+                    path: 'suppliers',
+                    element: <RequirePolicy policy={Policies.SuppliersView} />,
+                    children: [{ index: true, lazy: async () => ({ Component: (await import('@/features/suppliers/SuppliersPage')).SuppliersPage }) }],
+                  },
+                ],
+              },
+              {
+                path: '/tasks/rate-suppliers/:eventId',
+                element: <RequirePolicy policy={Policies.SuppliersRate} />,
+                children: [{ index: true, lazy: async () => ({ Component: (await import('@/features/suppliers/RateSuppliersPage')).RateSuppliersPage }) }],
               },
               comingSoon('/store', 'Merch store', 'Leftover stock and pop-up stores.'),
               {

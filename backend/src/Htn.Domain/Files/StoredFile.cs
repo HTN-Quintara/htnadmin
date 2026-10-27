@@ -91,6 +91,21 @@ public static class StoredFilePurposes
     /// </summary>
     public const string SpeakerPhoto = "speaker_photo";
 
+    /// <summary>
+    /// A logo for a Phase 7C supplier. PNG or JPG, at most 1 MB, modeled on <see cref="DirectoryLogo"/>. Visible to
+    /// any signed-in user, not the public.
+    /// </summary>
+    public const string SupplierLogo = "supplier_logo";
+
+    /// <summary>
+    /// A supplier's BIR 2303, business permit, or other compliance document (Phase 7C, frame 18c). PNG, JPG or PDF,
+    /// modeled on <see cref="TaskAttachment"/>. Never in a public list and never rendered inline: served only through
+    /// <c>GET /api/suppliers/{id}/documents/{docId}/download</c> as a download with <c>nosniff</c>, to anyone who
+    /// holds <c>Suppliers.View</c> (contacts, docs and reviews are lead-visible per the domain rule — only prices,
+    /// TIN and bank details are board-only).
+    /// </summary>
+    public const string SupplierDocument = "supplier_document";
+
     public const long EventCoverMaxBytes = 2 * 1024 * 1024;
     public const long PaymentProofMaxBytes = 5 * 1024 * 1024;
     public const long TaskAttachmentMaxBytes = 5 * 1024 * 1024;
@@ -98,12 +113,14 @@ public static class StoredFilePurposes
     public const long SponsorLogoMaxBytes = 1024 * 1024;
     public const long SpeakerPhotoMaxBytes = 2 * 1024 * 1024;
     public const long DirectoryLogoMaxBytes = 1024 * 1024;
+    public const long SupplierLogoMaxBytes = 1024 * 1024;
+    public const long SupplierDocumentMaxBytes = 5 * 1024 * 1024;
 
     /// <summary>Largest width or height of a proof image (phone screenshots and camera photos).</summary>
     public const int PaymentProofMaxDimension = 8192;
 
     /// <summary>Purposes that any signed-in user may download through <c>GET /api/files/{id}</c>.</summary>
-    public static readonly IReadOnlyList<string> PublicToMembers = [LogoLight, LogoDark, SponsorLogo, DirectoryLogo];
+    public static readonly IReadOnlyList<string> PublicToMembers = [LogoLight, LogoDark, SponsorLogo, DirectoryLogo, SupplierLogo];
 
     /// <summary>Purposes anyone (no sign-in) may download through <c>GET /api/public/files/{id}</c>: the public page and emails.</summary>
     public static readonly IReadOnlyList<string> PublicToEveryone = [LogoLight, LogoDark, EventCover, SponsorLogo];
@@ -117,6 +134,8 @@ public static class StoredFilePurposes
         SponsorLogo => SponsorLogoMaxBytes,
         SpeakerPhoto => SpeakerPhotoMaxBytes,
         DirectoryLogo => DirectoryLogoMaxBytes,
+        SupplierLogo => SupplierLogoMaxBytes,
+        SupplierDocument => SupplierDocumentMaxBytes,
         _ => StoredFile.MaxBytes,
     };
 }

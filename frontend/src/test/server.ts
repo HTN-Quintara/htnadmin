@@ -38,6 +38,9 @@ export const boardMe: Me = {
     'Directory.View',
     'Directory.Manage',
     'Invitations.Manage',
+    'Suppliers.View',
+    'Suppliers.Manage',
+    'Suppliers.Rate',
   ],
   preferences: { mode: 'system', textSize: 'default', density: 'comfortable' },
 }
@@ -113,7 +116,7 @@ export const committeeLeadMe: Me = {
   firstName: 'Carlo',
   lastName: 'Villanueva',
   email: 'carlo@hackthenorth.ph',
-  policies: [...goonMe.policies, 'Directory.View'],
+  policies: [...goonMe.policies, 'Directory.View', 'Suppliers.View', 'Suppliers.Rate'],
 }
 
 /** The finance assistant: a goon who may add ledger entries, which wait for the CFO. */

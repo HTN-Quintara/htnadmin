@@ -11,6 +11,7 @@ using Htn.Domain.Leads;
 using Htn.Domain.Speakers;
 using Htn.Domain.Sponsors;
 using Htn.Domain.Settings;
+using Htn.Domain.Suppliers;
 using Htn.Api.Features.Tasks;
 using Htn.Domain.Tasks;
 using Htn.Domain.Organization;
@@ -60,6 +61,7 @@ public static class DevSeeder
         await EnsureLeadsAsync(db, clock, ct);
         await EnsureDirectoryAsync(db, clock, ct);
         await EnsureInvitationsAsync(db, clock, ct);
+        await EnsureSuppliersAsync(db, clock, ct);
         await EnsureAgendaAsync(db, clock, ct);
         await EnsureSpeakerTravelModeAsync(db, clock, ct);
         logger.LogInformation("Development seed data is in place");
@@ -500,6 +502,61 @@ public static class DevSeeder
         sent.Send(dictContact.Id, dictContact.Email, dictContact.HolderName, merged.Subject, merged.Body, contactIsVerified: true, Guid.Empty, now.AddDays(-1));
         db.EventInvitations.Add(sent);
         db.InvitationEvents.Add(InvitationEvent.Create(sent.Id, InvitationStatus.Sent, null, now.AddDays(-1)));
+
+        await db.SaveChangesAsync(ct);
+    }
+
+    /// <summary>
+    /// Phase 7C (frame 18c-equivalent): three suppliers across categories, a BIR 2303 on one, and two hires on HTN
+    /// Con 2026 — one <c>DepositPaid</c> tied to the seeded Logistics committee (whose lead is Mika), so the
+    /// rate-suppliers flow is exercisable once the event has ended, and one plain <c>Quotation</c> to show the
+    /// delete-while-Quotation affordance.
+    /// </summary>
+    private static async Task EnsureSuppliersAsync(HtnDbContext db, TimeProvider clock, CancellationToken ct)
+    {
+        var now = clock.GetUtcNow();
+        if (await db.Suppliers.AnyAsync(ct)) return;
+
+        var venue = Supplier.Create(
+            new NewSupplier(SupplierCategory.Venue, "SMX Convention Center", "Events Desk", "events@smxconvention.com",
+                "+6328561234", true, "123-456-789-000", "BDO 001-234-567-890", null),
+            Guid.Empty, now);
+        var catering = Supplier.Create(
+            new NewSupplier(SupplierCategory.Catering, "Manila Catering Co.", "Nina Flores", "nina@manilacatering.ph",
+                "+639181234567", true, "234-567-890-000", "BPI 002-345-678-901", "Halal options available."),
+            Guid.Empty, now);
+        var printing = Supplier.Create(
+            new NewSupplier(SupplierCategory.Printing, "QuickPrint PH", null, "orders@quickprint.ph", null, false, null, null, null),
+            Guid.Empty, now);
+        db.Suppliers.AddRange(venue, catering, printing);
+        await db.SaveChangesAsync(ct);
+
+        var stored = StoredFile.Create("application/pdf", 1024, new string('0', 64), StoredFilePurposes.SupplierDocument, "bir-2303.pdf", now, Guid.Empty);
+        db.StoredFiles.Add(stored);
+        db.SupplierDocuments.Add(SupplierDocument.Create(venue.Id, SupplierDocumentKind.Bir2303, stored.Id, Guid.Empty, now));
+
+        // Two dev-only expense categories for the hires — no seeded system LedgerCategory means "venue"/"catering".
+        var venueCategory = LedgerCategory.Create("venue", "Venue", BudgetLineKind.Expense, 100, now);
+        var cateringCategory = LedgerCategory.Create("catering", "Catering", BudgetLineKind.Expense, 101, now);
+        db.LedgerCategories.AddRange(venueCategory, cateringCategory);
+
+        var ev = await db.Events.FirstOrDefaultAsync(e => e.Slug == SampleEventSlug, ct);
+        var logistics = ev is null ? null : await db.Committees.FirstOrDefaultAsync(c => c.EventId == ev.Id && c.Name == "Logistics", ct);
+        if (ev is not null && logistics is not null)
+        {
+            var booked = EventSupplier.Create(ev.Id,
+                new NewEventSupplierHire(venue.Id, venueCategory.Id, logistics.Id, "Main hall for HTN Con 2026."), Guid.Empty, now);
+            booked.Update(
+                new UpdateEventSupplierHire(180_000m, 90_000m, 90_000m, DateOnly.FromDateTime(ev.StartsAt.AddDays(-7).Date), booked.Note),
+                Guid.Empty, now);
+            booked.Advance(SupplierHireStatus.Booked, Guid.Empty, now);
+            booked.Advance(SupplierHireStatus.DepositPaid, Guid.Empty, now);
+            db.EventSuppliers.Add(booked);
+
+            var quoted = EventSupplier.Create(ev.Id,
+                new NewEventSupplierHire(catering.Id, cateringCategory.Id, logistics.Id, "Awaiting final headcount."), Guid.Empty, now);
+            db.EventSuppliers.Add(quoted);
+        }
 
         await db.SaveChangesAsync(ct);
     }

@@ -44,6 +44,12 @@ export const Policies = {
   DirectoryManage: 'Directory.Manage',
   /** Board only: invitations per event. Unlike Directory, there is no committee-lead exception. */
   InvitationsManage: 'Invitations.Manage',
+  /** Board, or any committee lead anywhere: read the global supplier catalog and per-event hires. */
+  SuppliersView: 'Suppliers.View',
+  /** Board only: create/edit suppliers, documents, hires, money and status. */
+  SuppliersManage: 'Suppliers.Manage',
+  /** Resource-scoped: board, or the lead of the hire's owning committee, once the event has ended. */
+  SuppliersRate: 'Suppliers.Rate',
 } as const
 
 export type Policy = (typeof Policies)[keyof typeof Policies] | (string & {})

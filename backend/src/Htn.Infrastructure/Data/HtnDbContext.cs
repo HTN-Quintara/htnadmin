@@ -14,6 +14,7 @@ using Htn.Domain.Leads;
 using Htn.Domain.Speakers;
 using Htn.Domain.Sponsors;
 using Htn.Domain.Settings;
+using Htn.Domain.Suppliers;
 using Htn.Domain.Tasks;
 using Htn.Infrastructure.Identity;
 using Microsoft.AspNetCore.DataProtection.EntityFrameworkCore;
@@ -84,6 +85,10 @@ public sealed class HtnDbContext(DbContextOptions<HtnDbContext> options)
     public DbSet<EventInvitation> EventInvitations => Set<EventInvitation>();
     public DbSet<InvitationEvent> InvitationEvents => Set<InvitationEvent>();
     public DbSet<EventInvitationTemplate> EventInvitationTemplates => Set<EventInvitationTemplate>();
+    public DbSet<Supplier> Suppliers => Set<Supplier>();
+    public DbSet<SupplierDocument> SupplierDocuments => Set<SupplierDocument>();
+    public DbSet<EventSupplier> EventSuppliers => Set<EventSupplier>();
+    public DbSet<SupplierRating> SupplierRatings => Set<SupplierRating>();
     public DbSet<AuditEntry> AuditEntries => Set<AuditEntry>();
     public DbSet<OutboxMessage> Outbox => Set<OutboxMessage>();
     public DbSet<AccountToken> AccountTokens => Set<AccountToken>();
@@ -168,6 +173,15 @@ public sealed class HtnDbContext(DbContextOptions<HtnDbContext> options)
                 throw new InvalidOperationException("A sent invitation is never deleted.");
             if (entry.State is EntityState.Modified or EntityState.Deleted && entry.Entity is InvitationEvent)
                 throw new InvalidOperationException("InvitationEvent is append-only.");
+            // Suppliers, their documents and a hire are deactivated/voided with a reason, never deleted — except a
+            // hire may still be hard-deleted while it is still Quotation (nothing irreversible has happened yet).
+            if (entry.State == EntityState.Deleted && entry.Entity is Supplier or SupplierDocument)
+                throw new InvalidOperationException($"{entry.Entity.GetType().Name} rows are never deleted.");
+            if (entry.State == EntityState.Deleted && entry.Entity is EventSupplier hire && !hire.IsQuotation)
+                throw new InvalidOperationException("A hire past Quotation is voided, never deleted.");
+            // A supplier rating is fully append-only: no update, no delete, ever.
+            if (entry.State is EntityState.Modified or EntityState.Deleted && entry.Entity is SupplierRating)
+                throw new InvalidOperationException("SupplierRating is append-only.");
             if (entry.State == EntityState.Deleted && entry.Entity is Position or PositionAssignment or PaymentAccount or StoredFile or Domain.Settings.OrgSettings
                     or Event or TicketType or Voucher or Registration or Attendee or Payment or PaymentProof
                     or Committee or CommitteeMember or EventVolunteer

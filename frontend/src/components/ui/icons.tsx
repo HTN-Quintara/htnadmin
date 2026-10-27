@@ -63,6 +63,10 @@ export const PhoneIcon = createIcon('M7 2h10a1 1 0 0 1 1 1v18a1 1 0 0 1-1 1H7a1 
 export const LaptopIcon = createIcon('M4 5h16v11H4zM2 20h20')
 export const ExclamationIcon = createIcon('M12 5v9M12 19h.01')
 export const CircleIcon = createIcon('M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18z')
+export const StarIcon = createIcon(
+  'M12 2.7l2.8 5.9 6.4.9-4.6 4.6 1.1 6.4L12 17.4l-5.7 3.1 1.1-6.4-4.6-4.6 6.4-.9z',
+)
+export const TruckIcon = createIcon('M3 16V6h10v10M13 10h4l3 3v3h-2M3 16a2 2 0 1 0 4 0M15 16a2 2 0 1 0 4 0')
 
 /** Circle with the left half filled ("own / scoped" access). */
 export function HalfCircleIcon(props: IconProps) {

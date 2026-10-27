@@ -68,6 +68,13 @@ const codeMessages: Record<string, string> = {
   // Invitations (frame 19).
   contact_not_verified: "The organization's contact must be verified before sending.",
   already_sent: 'This invitation has already been sent.',
+  // Suppliers (frame 18b/18c).
+  document_already_voided: 'This document is already removed.',
+  already_voided: 'This hire has already been voided.',
+  already_hired: 'This supplier is already hired for this event. Void the existing hire first.',
+  not_quotation: 'This hire has moved past Quotation and can no longer be deleted. Void it instead.',
+  event_not_ended: 'Suppliers can only be rated once the event has ended.',
+  already_rated: 'You have already rated this supplier for this event.',
   // Finance (frames 24-26).
   month_closed: 'This month is closed. Reopen it, or post a correcting entry dated today.',
   month_has_pending: 'Some entries are still waiting for approval. Approve or void them first.',

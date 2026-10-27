@@ -41,6 +41,7 @@ export function EventLayout() {
   const canSponsors = useCan(Policies.SponsorsManage)
   const canLeads = useCan(Policies.LeadsManage)
   const canInvitations = useCan(Policies.InvitationsManage)
+  const canSuppliers = useCan(Policies.SuppliersView)
 
   if (query.isPending) {
     return (
@@ -104,6 +105,7 @@ export function EventLayout() {
     ...(canSponsors ? [{ to: `${base}/sponsors`, label: 'Sponsors' }] : []),
     ...(canLeads ? [{ to: `${base}/leads`, label: 'Leads' }] : []),
     ...(canInvitations ? [{ to: `${base}/invitations`, label: 'Invitations' }] : []),
+    ...(canSuppliers ? [{ to: `${base}/suppliers`, label: 'Suppliers' }] : []),
   ]
 
   return (

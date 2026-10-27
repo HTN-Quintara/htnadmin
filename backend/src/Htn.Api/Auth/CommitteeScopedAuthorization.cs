@@ -21,6 +21,16 @@ public enum CommitteeAccess
 
     /// <summary><c>Speakers.Manage</c> and agenda writes: board, or the lead of the event's Programs committee.</summary>
     ProgramsManage,
+
+    /// <summary>
+    /// <c>Suppliers.Rate</c>: board, or the lead of the hire's <c>OwnerCommitteeId</c> specifically — not any lead,
+    /// unlike <c>Directory.View</c>'s "leads anything" carve-out. Behaves like <see cref="ManageMembers"/>/
+    /// <see cref="TasksManage"/> against a <see cref="CommitteeScope"/> (lead-of-that-committee only); the coarse,
+    /// resource-less route gate ("may be allowed") is the same "leads something, anywhere" check those use too, so a
+    /// goon who leads nothing gets 403 immediately. The endpoint then re-runs this policy with the hire's real
+    /// <see cref="CommitteeScope"/> once it has loaded the row — see <c>EventSuppliersEndpoints.Rate</c>.
+    /// </summary>
+    SuppliersRate,
 }
 
 public sealed class CommitteeScopedRequirement(CommitteeAccess access) : IAuthorizationRequirement
@@ -81,7 +91,7 @@ public sealed class CommitteeScopedHandler(ICommitteeContext committees, ITaskSc
             return;
         }
         var programs = requirement.Access is CommitteeAccess.ProgramsManage;
-        var manage = requirement.Access is CommitteeAccess.ManageMembers or CommitteeAccess.TasksManage;
+        var manage = requirement.Access is CommitteeAccess.ManageMembers or CommitteeAccess.TasksManage or CommitteeAccess.SuppliersRate;
         var granted = context.Resource switch
         {
             CommitteeScope c => manage
