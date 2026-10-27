@@ -11,6 +11,9 @@ namespace Htn.Domain.Committees;
 public sealed class Committee
 {
     public const int NameMaxLength = 60;
+
+    /// <summary>The programme committee. Phase 6 scopes agenda/speaker writes to its lead until a purpose column lands (Phase 7).</summary>
+    public const string ProgramsName = "Programs";
     public const int MaxSortOrder = 1000;
     public const int ReasonMaxLength = 500;
 

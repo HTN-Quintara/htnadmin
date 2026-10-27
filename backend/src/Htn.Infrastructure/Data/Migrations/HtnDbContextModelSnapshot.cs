@@ -23,6 +23,207 @@ namespace Htn.Infrastructure.Data.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
+            modelBuilder.Entity("Htn.Domain.Agenda.EventRoom", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("ColorHex")
+                        .IsRequired()
+                        .HasMaxLength(7)
+                        .HasColumnType("character(7)")
+                        .HasColumnName("color_hex")
+                        .IsFixedLength();
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<DateTimeOffset?>("DeactivatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("deactivated_at");
+
+                    b.Property<Guid>("EventId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("event_id");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_active");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(80)
+                        .HasColumnType("character varying(80)")
+                        .HasColumnName("name");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("integer")
+                        .HasColumnName("sort_order");
+
+                    b.HasKey("Id")
+                        .HasName("pk_event_rooms");
+
+                    b.HasIndex("EventId", "Name")
+                        .IsUnique()
+                        .HasDatabaseName("ux_event_rooms_event_name")
+                        .HasFilter("deactivated_at IS NULL");
+
+                    b.HasIndex("EventId", "SortOrder")
+                        .HasDatabaseName("ix_event_rooms_event");
+
+                    b.ToTable("event_rooms", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_event_rooms_color", "color_hex ~ '^#[0-9A-F]{6}$'");
+
+                            t.HasCheckConstraint("ck_event_rooms_deactivated", "is_active = (deactivated_at IS NULL)");
+                        });
+                });
+
+            modelBuilder.Entity("Htn.Domain.Agenda.Session", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedById")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by_id");
+
+                    b.Property<int>("DurationMinutes")
+                        .HasColumnType("integer")
+                        .HasColumnName("duration_minutes");
+
+                    b.Property<Guid>("EventId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("event_id");
+
+                    b.Property<bool>("IsPublic")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_public");
+
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)")
+                        .HasColumnName("kind");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("notes");
+
+                    b.Property<Guid?>("OwnerCommitteeId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("owner_committee_id");
+
+                    b.Property<uint>("RowVersion")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.Property<DateTimeOffset>("StartsAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("starts_at");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(160)
+                        .HasColumnType("character varying(160)")
+                        .HasColumnName("title");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedById")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_sessions");
+
+                    b.HasIndex("OwnerCommitteeId")
+                        .HasDatabaseName("ix_sessions_owner_committee_id");
+
+                    b.HasIndex("EventId", "StartsAt")
+                        .HasDatabaseName("ix_sessions_event_start");
+
+                    b.ToTable("sessions", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_sessions_duration", "duration_minutes BETWEEN 5 AND 600");
+
+                            t.HasCheckConstraint("ck_sessions_kind", "kind IN ('Keynote', 'Talk', 'Panel', 'Workshop', 'Break')");
+
+                            t.HasCheckConstraint("ck_sessions_title", "char_length(title) > 0");
+                        });
+                });
+
+            modelBuilder.Entity("Htn.Domain.Agenda.SessionRoom", b =>
+                {
+                    b.Property<Guid>("SessionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("session_id");
+
+                    b.Property<Guid>("RoomId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("room_id");
+
+                    b.Property<Guid>("EventId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("event_id");
+
+                    b.HasKey("SessionId", "RoomId")
+                        .HasName("pk_session_rooms");
+
+                    b.HasIndex("RoomId", "SessionId")
+                        .HasDatabaseName("ix_session_rooms_room");
+
+                    b.ToTable("session_rooms", (string)null);
+                });
+
+            modelBuilder.Entity("Htn.Domain.Agenda.SessionSpeaker", b =>
+                {
+                    b.Property<Guid>("SessionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("session_id");
+
+                    b.Property<Guid>("SpeakerId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("speaker_id");
+
+                    b.Property<Guid>("EventId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("event_id");
+
+                    b.Property<string>("Role")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)")
+                        .HasColumnName("role");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("integer")
+                        .HasColumnName("sort_order");
+
+                    b.HasKey("SessionId", "SpeakerId")
+                        .HasName("pk_session_speakers");
+
+                    b.HasIndex("SpeakerId")
+                        .HasDatabaseName("ix_session_speakers_speaker");
+
+                    b.ToTable("session_speakers", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_session_speakers_role", "role IN ('Speaker', 'Moderator', 'Panellist')");
+                        });
+                });
+
             modelBuilder.Entity("Htn.Domain.Audit.AuditEntry", b =>
                 {
                     b.Property<Guid>("Id")
@@ -4364,6 +4565,66 @@ namespace Htn.Infrastructure.Data.Migrations
                         .HasName("pk_user_tokens");
 
                     b.ToTable("user_tokens", (string)null);
+                });
+
+            modelBuilder.Entity("Htn.Domain.Agenda.EventRoom", b =>
+                {
+                    b.HasOne("Htn.Domain.Events.Event", null)
+                        .WithMany()
+                        .HasForeignKey("EventId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_event_rooms_events_event_id");
+                });
+
+            modelBuilder.Entity("Htn.Domain.Agenda.Session", b =>
+                {
+                    b.HasOne("Htn.Domain.Events.Event", null)
+                        .WithMany()
+                        .HasForeignKey("EventId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_sessions_events_event_id");
+
+                    b.HasOne("Htn.Domain.Committees.Committee", null)
+                        .WithMany()
+                        .HasForeignKey("OwnerCommitteeId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_sessions_committees_owner_committee_id");
+                });
+
+            modelBuilder.Entity("Htn.Domain.Agenda.SessionRoom", b =>
+                {
+                    b.HasOne("Htn.Domain.Agenda.EventRoom", null)
+                        .WithMany()
+                        .HasForeignKey("RoomId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_session_rooms_event_rooms_room_id");
+
+                    b.HasOne("Htn.Domain.Agenda.Session", null)
+                        .WithMany()
+                        .HasForeignKey("SessionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_session_rooms_sessions_session_id");
+                });
+
+            modelBuilder.Entity("Htn.Domain.Agenda.SessionSpeaker", b =>
+                {
+                    b.HasOne("Htn.Domain.Agenda.Session", null)
+                        .WithMany()
+                        .HasForeignKey("SessionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_session_speakers_sessions_session_id");
+
+                    b.HasOne("Htn.Domain.Speakers.Speaker", null)
+                        .WithMany()
+                        .HasForeignKey("SpeakerId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_session_speakers_speakers_speaker_id");
                 });
 
             modelBuilder.Entity("Htn.Domain.CheckIn.CheckInScan", b =>

@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore;
 namespace Htn.Api.Auth;
 
 /// <summary>One active committee membership of the caller.</summary>
-public sealed record CommitteeMembership(Guid CommitteeId, Guid EventId, CommitteeRole Role);
+public sealed record CommitteeMembership(Guid CommitteeId, Guid EventId, CommitteeRole Role, string Name);
 
 /// <summary>
 /// The caller's committee memberships, loaded once per request. Every resource-scoped authorization decision
@@ -29,6 +29,9 @@ public interface ICommitteeContext
 
     /// <summary>The caller leads any committee of this event.</summary>
     Task<bool> LeadsAnyCommitteeOfEventAsync(Guid eventId, CancellationToken ct = default);
+
+    /// <summary>True when the caller leads a committee of that event whose name matches (case-insensitive).</summary>
+    Task<bool> IsLeadOfNamedCommitteeOfEventAsync(Guid eventId, string name, CancellationToken ct = default);
 
     /// <summary>The caller leads at least one committee anywhere ("may be allowed", for the resource-less check).</summary>
     Task<bool> LeadsAnythingAsync(CancellationToken ct = default);
@@ -57,7 +60,7 @@ public sealed class CommitteeContext(HtnDbContext db, ICurrentUser me) : ICommit
         var rows = await db.CommitteeMembers.AsNoTracking()
             .Where(m => m.PersonId == personId && m.LeftAt == null)
             .Join(db.Committees.AsNoTracking().Where(c => c.IsActive), m => m.CommitteeId, c => c.Id,
-                (m, c) => new CommitteeMembership(m.CommitteeId, m.EventId, m.Role))
+                (m, c) => new CommitteeMembership(m.CommitteeId, m.EventId, m.Role, c.Name))
             .ToListAsync(ct);
         foreach (var row in rows) _eventOfCommittee[row.CommitteeId] = row.EventId;
         return rows;
@@ -74,6 +77,10 @@ public sealed class CommitteeContext(HtnDbContext db, ICurrentUser me) : ICommit
 
     public async Task<bool> LeadsAnyCommitteeOfEventAsync(Guid eventId, CancellationToken ct = default) =>
         (await MembershipsAsync(ct)).Any(m => m.EventId == eventId && m.Role == CommitteeRole.Lead);
+
+    public async Task<bool> IsLeadOfNamedCommitteeOfEventAsync(Guid eventId, string name, CancellationToken ct = default) =>
+        (await MembershipsAsync(ct)).Any(m => m.EventId == eventId && m.Role == CommitteeRole.Lead
+            && string.Equals(m.Name, name, StringComparison.OrdinalIgnoreCase));
 
     public async Task<bool> LeadsAnythingAsync(CancellationToken ct = default) =>
         (await MembershipsAsync(ct)).Any(m => m.Role == CommitteeRole.Lead);

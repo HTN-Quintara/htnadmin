@@ -4,7 +4,9 @@ using Htn.Domain.Events;
 using Htn.Domain.Files;
 using Htn.Domain.Finance;
 using Htn.Domain.Registrations;
+using Htn.Domain.Agenda;
 using Htn.Domain.Leads;
+using Htn.Domain.Speakers;
 using Htn.Domain.Sponsors;
 using Htn.Domain.Settings;
 using Htn.Api.Features.Tasks;
@@ -54,6 +56,7 @@ public static class DevSeeder
         await EnsureFinanceAsync(db, users, sp.GetRequiredService<IFileStorage>(), clock, ct);
         await EnsureSponsorsAsync(db, clock, ct);
         await EnsureLeadsAsync(db, clock, ct);
+        await EnsureAgendaAsync(db, clock, ct);
         logger.LogInformation("Development seed data is in place");
     }
 
@@ -409,6 +412,37 @@ public static class DevSeeder
         var gomez = Lead.Create(ev.Id, new NewLead(LeadKind.Speaker, "Dr. Lara Gomez", "DICT", "Undersecretary",
             "lara.gomez@dict.gov.ph", null, null, null, "Keynote: state of PH cybersecurity", null, "Find secretary contact", null), Guid.Empty, now);
         db.Leads.AddRange(globe, devtools, gomez);
+        await db.SaveChangesAsync(ct);
+    }
+
+    /// <summary>Two rooms and a few sessions on HTN Con 2026 (frame 16), one with a tentative (invited) speaker.</summary>
+    private static async Task EnsureAgendaAsync(HtnDbContext db, TimeProvider clock, CancellationToken ct)
+    {
+        var now = clock.GetUtcNow();
+        var ev = await db.Events.FirstOrDefaultAsync(e => e.Slug == SampleEventSlug, ct);
+        if (ev is null || await db.Sessions.AnyAsync(x => x.EventId == ev.Id, ct)) return;
+
+        var manila = TimeSpan.FromHours(8);
+        var main = EventRoom.Create(ev.Id, "Main Hall", "#B71C1C", 0, now);
+        var workshop = EventRoom.Create(ev.Id, "Workshop Room A", "#0D9488", 1, now);
+        db.EventRooms.AddRange(main, workshop);
+
+        var opening = Session.Create(ev.Id, new NewSession("Opening remarks", SessionKind.Talk,
+            new DateTimeOffset(2026, 11, 22, 9, 0, 0, manila), 15, null, true, null), Guid.Empty, now);
+        var keynote = Session.Create(ev.Id, new NewSession("The state of Philippine cybersecurity", SessionKind.Keynote,
+            new DateTimeOffset(2026, 11, 22, 9, 15, 0, manila), 45, null, true, null), Guid.Empty, now);
+        var workshopSession = Session.Create(ev.Id, new NewSession("Hands-on: web app pentesting", SessionKind.Workshop,
+            new DateTimeOffset(2026, 11, 22, 10, 15, 0, manila), 90, null, true, null), Guid.Empty, now);
+        db.Sessions.AddRange(opening, keynote, workshopSession);
+        db.SessionRooms.AddRange(
+            SessionRoom.Create(opening.Id, main.Id, ev.Id),
+            SessionRoom.Create(keynote.Id, main.Id, ev.Id),
+            SessionRoom.Create(workshopSession.Id, workshop.Id, ev.Id));
+
+        // A directly-created (Invited) speaker makes the workshop read as tentative.
+        var mae = Speaker.Create(ev.Id, "Mae Torres", "mae.torres@devtools.io", "DevTools Inc.", Guid.Empty, now);
+        db.Speakers.Add(mae);
+        db.SessionSpeakers.Add(SessionSpeaker.Create(workshopSession.Id, mae.Id, ev.Id, SessionSpeakerRole.Speaker, 0));
         await db.SaveChangesAsync(ct);
     }
 

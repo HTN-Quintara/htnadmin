@@ -18,6 +18,9 @@ public enum CommitteeAccess
 
     /// <summary><c>Tasks.ViewBoard</c>: board, or anyone on any committee of that event.</summary>
     ViewBoard,
+
+    /// <summary><c>Speakers.Manage</c> and agenda writes: board, or the lead of the event's Programs committee.</summary>
+    ProgramsManage,
 }
 
 public sealed class CommitteeScopedRequirement(CommitteeAccess access) : IAuthorizationRequirement
@@ -77,19 +80,22 @@ public sealed class CommitteeScopedHandler(ICommitteeContext committees, ITaskSc
             context.Succeed(requirement);
             return;
         }
+        var programs = requirement.Access is CommitteeAccess.ProgramsManage;
         var manage = requirement.Access is CommitteeAccess.ManageMembers or CommitteeAccess.TasksManage;
         var granted = context.Resource switch
         {
             CommitteeScope c => manage
                 ? await committees.IsLeadOfAsync(c.CommitteeId)
                 : await OnCommitteeOrItsEventAsync(c.CommitteeId, requirement.Access),
-            EventScope e => manage
-                ? await committees.LeadsAnyCommitteeOfEventAsync(e.EventId)
-                : await committees.IsOnAnyCommitteeOfEventAsync(e.EventId),
+            EventScope e => programs
+                ? await committees.IsLeadOfNamedCommitteeOfEventAsync(e.EventId, Htn.Domain.Committees.Committee.ProgramsName)
+                : manage
+                    ? await committees.LeadsAnyCommitteeOfEventAsync(e.EventId)
+                    : await committees.IsOnAnyCommitteeOfEventAsync(e.EventId),
             TaskScope t => await TaskAsync(t.TaskId, requirement.Access),
             // No resource of ours: the route-level check (where ASP.NET Core passes the HttpContext) and
             // /api/auth/me. Both mean "may be allowed" — see the class summary.
-            _ => manage ? await committees.LeadsAnythingAsync() : await committees.IsOnAnythingAsync(),
+            _ => manage || programs ? await committees.LeadsAnythingAsync() : await committees.IsOnAnythingAsync(),
         };
         if (granted) context.Succeed(requirement);
     }

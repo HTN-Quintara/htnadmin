@@ -94,6 +94,7 @@ export function EventLayout() {
   // Tabs the user can't open are hidden (the routes and the API check the same policies).
   const tabs = [
     { to: `${base}/details`, label: 'Details' },
+    { to: `${base}/agenda`, label: 'Agenda' },
     { to: `${base}/committees`, label: 'Committees' },
     ...(canViewBoard ? [{ to: `${base}/tasks`, label: 'Tasks' }] : []),
     ...(canRegistrations ? [{ to: `${base}/registrations`, label: 'Registrations' }] : []),

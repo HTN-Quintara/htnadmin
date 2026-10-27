@@ -18,6 +18,7 @@ using Htn.Infrastructure.Data;
 using Htn.Infrastructure.Identity;
 using Htn.Infrastructure.Tickets;
 using FluentValidation;
+using Htn.Api.Features.Agenda;
 using Htn.Api.Features.Leads;
 using Htn.Api.Features.Sponsors;
 using Microsoft.AspNetCore.Authentication.Cookies;
@@ -185,6 +186,7 @@ app.MapSponsorTiers();
 app.MapPartners();
 app.MapLeads();
 app.MapSpeakersBasics();
+app.MapAgenda();
 
 var migrate = app.Configuration.GetValue("Database:MigrateOnStartup", app.Environment.IsDevelopment());
 if (migrate)

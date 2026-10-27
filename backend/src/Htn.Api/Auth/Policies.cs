@@ -88,12 +88,18 @@ public static class Policies
             .AddRequirements(new CommitteeScopedRequirement(CommitteeAccess.TasksWork)));
         auth.AddPolicy(TasksViewBoard, p => p.RequireAuthenticatedUser().RequireRole(Roles.Board, Roles.Goon, Roles.Apprentice)
             .AddRequirements(new CommitteeScopedRequirement(CommitteeAccess.ViewBoard)));
+        // Speakers.Manage (and agenda writes): board, or the lead of the event's Programs committee. A Programs lead
+        // is a goon, so the coarse role gate is Board/Goon; the handler decides per event, and endpoints that know the
+        // event re-run the policy with an EventScope. (Agenda sits in the events area but, per the agreed scope, its
+        // writes use this policy rather than the board-only Events.Manage.)
+        auth.AddPolicy(SpeakersManage, p => p.RequireAuthenticatedUser().RequireRole(Roles.Board, Roles.Goon)
+            .AddRequirements(new CommitteeScopedRequirement(CommitteeAccess.ProgramsManage)));
 
         string[] implemented =
         [
             PeopleView, PeopleManage, SettingsPersonal, EventsView, CheckInScan,
             FinanceView, FinanceRequest, FinancePost, FinanceApprove,
-            CommitteesManageMembers, TasksManage, TasksWork, TasksViewBoard, LeaderboardView,
+            CommitteesManageMembers, TasksManage, TasksWork, TasksViewBoard, LeaderboardView, SpeakersManage,
         ];
         foreach (var name in All.Except(implemented))
             auth.AddPolicy(name, p => p.RequireAuthenticatedUser().RequireRole(Roles.Board));

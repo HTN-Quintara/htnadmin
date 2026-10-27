@@ -42,6 +42,7 @@ describe('Committees', () => {
     const tabs = await screen.findByRole('navigation', { name: 'Event sections' })
     expect(within(tabs).getAllByRole('link').map((a) => a.textContent)).toEqual([
       'Details',
+      'Agenda',
       'Committees',
       'Tasks',
       'Registrations',

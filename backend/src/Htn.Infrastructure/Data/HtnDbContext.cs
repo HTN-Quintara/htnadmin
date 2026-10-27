@@ -7,6 +7,7 @@ using Htn.Domain.Finance;
 using Htn.Domain.Organization;
 using Htn.Domain.Outbox;
 using Htn.Domain.Registrations;
+using Htn.Domain.Agenda;
 using Htn.Domain.Leads;
 using Htn.Domain.Speakers;
 using Htn.Domain.Sponsors;
@@ -67,6 +68,10 @@ public sealed class HtnDbContext(DbContextOptions<HtnDbContext> options)
     public DbSet<PartnerGroupLink> PartnerGroupLinks => Set<PartnerGroupLink>();
     public DbSet<Lead> Leads => Set<Lead>();
     public DbSet<Speaker> Speakers => Set<Speaker>();
+    public DbSet<EventRoom> EventRooms => Set<EventRoom>();
+    public DbSet<Session> Sessions => Set<Session>();
+    public DbSet<SessionRoom> SessionRooms => Set<SessionRoom>();
+    public DbSet<SessionSpeaker> SessionSpeakers => Set<SessionSpeaker>();
     public DbSet<AuditEntry> AuditEntries => Set<AuditEntry>();
     public DbSet<OutboxMessage> Outbox => Set<OutboxMessage>();
     public DbSet<AccountToken> AccountTokens => Set<AccountToken>();
@@ -129,6 +134,9 @@ public sealed class HtnDbContext(DbContextOptions<HtnDbContext> options)
             // Leads and speakers are append-only: a lead is reopened or declined with a reason, a speaker is voided.
             if (entry.State == EntityState.Deleted && entry.Entity is Lead or Speaker)
                 throw new InvalidOperationException($"{entry.Entity.GetType().Name} rows are never deleted.");
+            // A room is deactivated, never deleted. (Sessions and their room/speaker link rows are deletable.)
+            if (entry.State == EntityState.Deleted && entry.Entity is EventRoom)
+                throw new InvalidOperationException("Event rooms are deactivated, never deleted.");
             if (entry.State == EntityState.Deleted && entry.Entity is Person)
                 throw new InvalidOperationException("People are deactivated, never deleted.");
             if (entry.State == EntityState.Deleted && entry.Entity is Position or PositionAssignment or PaymentAccount or StoredFile or Domain.Settings.OrgSettings
