@@ -61,6 +61,10 @@ public sealed class Lead
     public string? NextStep { get; private set; }
     public DateOnly? NextStepDue { get; private set; }
     public LeadSource Source { get; private set; }
+
+    /// <summary>Phase 7 Directory join, populated by <c>DirectoryOps.BackfillAsync</c> matching on <see cref="NameKey"/>.</summary>
+    public Guid? DirectoryOrgId { get; private set; }
+
     public Guid? SponsorId { get; private set; }
     public Guid? SpeakerId { get; private set; }
     public DateTimeOffset? ConfirmedAt { get; private set; }

@@ -1,5 +1,7 @@
 using Htn.Infrastructure.Identity;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Htn.Api.Auth;
 
@@ -95,11 +97,27 @@ public static class Policies
         auth.AddPolicy(SpeakersManage, p => p.RequireAuthenticatedUser().RequireRole(Roles.Board, Roles.Goon)
             .AddRequirements(new CommitteeScopedRequirement(CommitteeAccess.ProgramsManage)));
 
+        // Directory.Manage (Phase 7A): board only, like Sponsors.Manage and Leads.Manage.
+        auth.AddPolicy(DirectoryManage, p => p.RequireAuthenticatedUser().RequireRole(Roles.Board));
+        // Directory.View: board, or any committee lead of any event — a lead chases its own org's contacts, not just
+        // its own event's, so this is deliberately not event-scoped (unlike Tasks.ViewBoard). ICommitteeContext
+        // already has exactly "leads something, anywhere" as LeadsAnythingAsync (the same check the resource-less
+        // branch of CommitteeScopedHandler uses), so Directory.View is a plain RequireAssertion rather than a new
+        // CommitteeScopedRequirement/resource type.
+        auth.AddPolicy(DirectoryView, p => p.RequireAuthenticatedUser().RequireRole(Roles.Board, Roles.Goon)
+            .RequireAssertion(async ctx => ctx.User.IsInRole(Roles.Board)
+                || await (ctx.Resource switch
+                {
+                    HttpContext http => http.RequestServices.GetRequiredService<ICommitteeContext>().LeadsAnythingAsync(),
+                    _ => Task.FromResult(false),
+                })));
+
         string[] implemented =
         [
             PeopleView, PeopleManage, SettingsPersonal, EventsView, CheckInScan,
             FinanceView, FinanceRequest, FinancePost, FinanceApprove,
             CommitteesManageMembers, TasksManage, TasksWork, TasksViewBoard, LeaderboardView, SpeakersManage,
+            DirectoryManage, DirectoryView,
         ];
         foreach (var name in All.Except(implemented))
             auth.AddPolicy(name, p => p.RequireAuthenticatedUser().RequireRole(Roles.Board));

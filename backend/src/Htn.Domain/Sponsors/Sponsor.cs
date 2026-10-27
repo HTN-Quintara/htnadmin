@@ -75,6 +75,10 @@ public sealed class Sponsor
 
     public Guid? LogoFileId { get; private set; }
     public string? WebsiteUrl { get; private set; }
+
+    /// <summary>Phase 7 Directory join, populated by <c>DirectoryOps.BackfillAsync</c> matching on <see cref="NameKey"/>.</summary>
+    public Guid? DirectoryOrgId { get; private set; }
+
     public DateTimeOffset CreatedAt { get; private set; }
     public Guid? CreatedById { get; private set; }
     public DateTimeOffset UpdatedAt { get; private set; }

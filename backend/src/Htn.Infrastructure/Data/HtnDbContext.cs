@@ -1,6 +1,7 @@
 using Htn.Domain.Audit;
 using Htn.Domain.CheckIn;
 using Htn.Domain.Committees;
+using Htn.Domain.Directory;
 using Htn.Domain.Events;
 using Htn.Domain.Files;
 using Htn.Domain.Finance;
@@ -76,6 +77,9 @@ public sealed class HtnDbContext(DbContextOptions<HtnDbContext> options)
     public DbSet<SpeakerLink> SpeakerLinks => Set<SpeakerLink>();
     public DbSet<SpeakerLinkAccess> SpeakerLinkAccess => Set<SpeakerLinkAccess>();
     public DbSet<SpeakerPlusOne> SpeakerPlusOnes => Set<SpeakerPlusOne>();
+    public DbSet<DirectoryOrg> DirectoryOrgs => Set<DirectoryOrg>();
+    public DbSet<DirectoryContact> DirectoryContacts => Set<DirectoryContact>();
+    public DbSet<DirectoryContactHistory> DirectoryContactHistory => Set<DirectoryContactHistory>();
     public DbSet<AuditEntry> AuditEntries => Set<AuditEntry>();
     public DbSet<OutboxMessage> Outbox => Set<OutboxMessage>();
     public DbSet<AccountToken> AccountTokens => Set<AccountToken>();
@@ -148,6 +152,12 @@ public sealed class HtnDbContext(DbContextOptions<HtnDbContext> options)
                 throw new InvalidOperationException("SpeakerLinkAccess is append-only.");
             if (entry.State == EntityState.Deleted && entry.Entity is Person)
                 throw new InvalidOperationException("People are deactivated, never deleted.");
+            // Directory orgs and contacts are deactivated/voided with a reason, never deleted. Their history is
+            // fully append-only: no updates and no deletes, ever.
+            if (entry.State == EntityState.Deleted && entry.Entity is DirectoryOrg or DirectoryContact)
+                throw new InvalidOperationException($"{entry.Entity.GetType().Name} rows are never deleted.");
+            if (entry.State is EntityState.Modified or EntityState.Deleted && entry.Entity is DirectoryContactHistory)
+                throw new InvalidOperationException("DirectoryContactHistory is append-only.");
             if (entry.State == EntityState.Deleted && entry.Entity is Position or PositionAssignment or PaymentAccount or StoredFile or Domain.Settings.OrgSettings
                     or Event or TicketType or Voucher or Registration or Attendee or Payment or PaymentProof
                     or Committee or CommitteeMember or EventVolunteer

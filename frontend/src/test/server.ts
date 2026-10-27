@@ -35,6 +35,8 @@ export const boardMe: Me = {
     'Sponsors.Manage',
     'Leads.Manage',
     'Speakers.Manage',
+    'Directory.View',
+    'Directory.Manage',
   ],
   preferences: { mode: 'system', textSize: 'default', density: 'comfortable' },
 }
@@ -97,6 +99,20 @@ export const cfoMe: Me = {
   email: 'noel@hackthenorth.ph',
   isCfo: true,
   policies: [...boardMe.policies, 'Finance.Post', 'Finance.Approve'],
+}
+
+/**
+ * A goon who leads a committee somewhere, but holds no other role: Directory.View is granted
+ * (any committee lead may chase its own org's contacts) while Directory.Manage stays board-only.
+ */
+export const committeeLeadMe: Me = {
+  ...goonMe,
+  id: 'u6',
+  personId: 'p6',
+  firstName: 'Carlo',
+  lastName: 'Villanueva',
+  email: 'carlo@hackthenorth.ph',
+  policies: [...goonMe.policies, 'Directory.View'],
 }
 
 /** The finance assistant: a goon who may add ledger entries, which wait for the CFO. */

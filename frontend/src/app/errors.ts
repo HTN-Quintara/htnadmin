@@ -63,6 +63,8 @@ const codeMessages: Record<string, string> = {
   unknown_tier: 'That tier no longer exists. Pick another one.',
   threshold_not_reached: "This partner hasn't reached the threshold yet.",
   already_tagged: 'That organization is already a partner.',
+  // Directory (frame 18).
+  already_deactivated: 'This organization is already deactivated.',
   // Finance (frames 24-26).
   month_closed: 'This month is closed. Reopen it, or post a correcting entry dated today.',
   month_has_pending: 'Some entries are still waiting for approval. Approve or void them first.',

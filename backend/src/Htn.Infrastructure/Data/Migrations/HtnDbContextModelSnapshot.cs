@@ -562,6 +562,263 @@ namespace Htn.Infrastructure.Data.Migrations
                         });
                 });
 
+            modelBuilder.Entity("Htn.Domain.Directory.DirectoryContact", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("CcEmails")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("cc_emails");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedById")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by_id");
+
+                    b.Property<string>("Email")
+                        .IsRequired()
+                        .HasMaxLength(254)
+                        .HasColumnType("character varying(254)")
+                        .HasColumnName("email");
+
+                    b.Property<string>("HolderName")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)")
+                        .HasColumnName("holder_name");
+
+                    b.Property<bool>("IsPrimary")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_primary");
+
+                    b.Property<Guid>("OrgId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("org_id");
+
+                    b.Property<string>("Phone")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("phone");
+
+                    b.Property<string>("Position")
+                        .IsRequired()
+                        .HasMaxLength(80)
+                        .HasColumnType("character varying(80)")
+                        .HasColumnName("position");
+
+                    b.Property<uint>("RowVersion")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedById")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by_id");
+
+                    b.Property<DateTimeOffset?>("VerifiedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("verified_at");
+
+                    b.Property<string>("VoidReason")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("void_reason");
+
+                    b.Property<DateTimeOffset?>("VoidedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("voided_at");
+
+                    b.Property<Guid?>("VoidedById")
+                        .HasColumnType("uuid")
+                        .HasColumnName("voided_by_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_directory_contacts");
+
+                    b.HasIndex("OrgId")
+                        .IsUnique()
+                        .HasDatabaseName("ux_directory_contacts_primary")
+                        .HasFilter("is_primary AND voided_at IS NULL");
+
+                    b.ToTable("directory_contacts", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_directory_contacts_void", "(voided_at IS NULL) = (void_reason IS NULL) AND (voided_at IS NULL) = (voided_by_id IS NULL)");
+                        });
+                });
+
+            modelBuilder.Entity("Htn.Domain.Directory.DirectoryContactHistory", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTimeOffset>("At")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("at");
+
+                    b.Property<Guid?>("ById")
+                        .HasColumnType("uuid")
+                        .HasColumnName("by_id");
+
+                    b.Property<Guid?>("ContactId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("contact_id");
+
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)")
+                        .HasColumnName("kind");
+
+                    b.Property<string>("Note")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("note");
+
+                    b.Property<Guid>("OrgId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("org_id");
+
+                    b.Property<string>("PriorHolderName")
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)")
+                        .HasColumnName("prior_holder_name");
+
+                    b.Property<string>("PriorPosition")
+                        .HasMaxLength(80)
+                        .HasColumnType("character varying(80)")
+                        .HasColumnName("prior_position");
+
+                    b.HasKey("Id")
+                        .HasName("pk_directory_contact_history");
+
+                    b.HasIndex("ContactId")
+                        .HasDatabaseName("ix_directory_contact_history_contact");
+
+                    b.HasIndex("OrgId", "At")
+                        .HasDatabaseName("ix_directory_contact_history_org");
+
+                    b.ToTable("directory_contact_history", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_directory_contact_history_holder_changed", "kind <> 'HolderChanged' OR (prior_position IS NOT NULL AND prior_holder_name IS NOT NULL)");
+
+                            t.HasCheckConstraint("ck_directory_contact_history_kind", "kind IN ('HolderChanged', 'Verified', 'StillCorrect', 'Bounced')");
+                        });
+                });
+
+            modelBuilder.Entity("Htn.Domain.Directory.DirectoryOrg", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("AddresseeSalutation")
+                        .HasMaxLength(160)
+                        .HasColumnType("character varying(160)")
+                        .HasColumnName("addressee_salutation");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedById")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by_id");
+
+                    b.Property<string>("DeactivateReason")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("deactivate_reason");
+
+                    b.Property<DateTimeOffset?>("DeactivatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("deactivated_at");
+
+                    b.Property<Guid?>("DeactivatedById")
+                        .HasColumnType("uuid")
+                        .HasColumnName("deactivated_by_id");
+
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)")
+                        .HasColumnName("kind");
+
+                    b.Property<Guid?>("LogoFileId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("logo_file_id");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(160)
+                        .HasColumnType("character varying(160)")
+                        .HasColumnName("name");
+
+                    b.Property<string>("NameKey")
+                        .IsRequired()
+                        .HasMaxLength(160)
+                        .HasColumnType("character varying(160)")
+                        .HasColumnName("name_key");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)")
+                        .HasColumnName("notes");
+
+                    b.Property<uint>("RowVersion")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedById")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by_id");
+
+                    b.Property<string>("WebsiteUrl")
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)")
+                        .HasColumnName("website_url");
+
+                    b.HasKey("Id")
+                        .HasName("pk_directory_orgs");
+
+                    b.HasIndex("Kind")
+                        .HasDatabaseName("ix_directory_orgs_kind");
+
+                    b.HasIndex("LogoFileId")
+                        .HasDatabaseName("ix_directory_orgs_logo_file_id");
+
+                    b.HasIndex("NameKey")
+                        .IsUnique()
+                        .HasDatabaseName("ux_directory_orgs_name_key")
+                        .HasFilter("deactivated_at IS NULL");
+
+                    b.ToTable("directory_orgs", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_directory_orgs_deactivated", "(deactivated_at IS NULL) = (deactivate_reason IS NULL) AND (deactivated_at IS NULL) = (deactivated_by_id IS NULL)");
+
+                            t.HasCheckConstraint("ck_directory_orgs_kind", "kind IN ('Government', 'Company', 'University', 'NonProfit')");
+
+                            t.HasCheckConstraint("ck_directory_orgs_website", "website_url IS NULL OR website_url ~ '^https?://'");
+                        });
+                });
+
             modelBuilder.Entity("Htn.Domain.Events.Event", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1788,6 +2045,10 @@ namespace Htn.Infrastructure.Data.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("declined_by_id");
 
+                    b.Property<Guid?>("DirectoryOrgId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("directory_org_id");
+
                     b.Property<Guid>("EventId")
                         .HasColumnType("uuid")
                         .HasColumnName("event_id");
@@ -1862,6 +2123,9 @@ namespace Htn.Infrastructure.Data.Migrations
 
                     b.HasIndex("AskTierId")
                         .HasDatabaseName("ix_leads_ask_tier_id");
+
+                    b.HasIndex("DirectoryOrgId")
+                        .HasDatabaseName("ix_leads_directory_org");
 
                     b.HasIndex("OwnerPersonId")
                         .HasDatabaseName("ix_leads_owner");
@@ -3357,6 +3621,10 @@ namespace Htn.Infrastructure.Data.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("created_by_id");
 
+                    b.Property<Guid?>("DirectoryOrgId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("directory_org_id");
+
                     b.Property<string>("DisplayName")
                         .IsRequired()
                         .HasMaxLength(160)
@@ -3406,6 +3674,9 @@ namespace Htn.Infrastructure.Data.Migrations
 
                     b.HasKey("Id")
                         .HasName("pk_event_partners");
+
+                    b.HasIndex("DirectoryOrgId")
+                        .HasDatabaseName("ix_event_partners_directory_org");
 
                     b.HasIndex("LogoFileId")
                         .HasDatabaseName("ix_event_partners_logo_file_id");
@@ -3606,6 +3877,10 @@ namespace Htn.Infrastructure.Data.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("created_by_id");
 
+                    b.Property<Guid?>("DirectoryOrgId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("directory_org_id");
+
                     b.Property<string>("DisplayName")
                         .HasMaxLength(160)
                         .HasColumnType("character varying(160)")
@@ -3697,6 +3972,9 @@ namespace Htn.Infrastructure.Data.Migrations
 
                     b.HasIndex("CashPaymentAccountId")
                         .HasDatabaseName("ix_sponsors_cash_payment_account_id");
+
+                    b.HasIndex("DirectoryOrgId")
+                        .HasDatabaseName("ix_sponsors_directory_org");
 
                     b.HasIndex("LogoFileId")
                         .HasDatabaseName("ix_sponsors_logo_file_id");
@@ -5083,6 +5361,41 @@ namespace Htn.Infrastructure.Data.Migrations
                         .HasConstraintName("fk_event_volunteers_committees_committee_id_event_id");
                 });
 
+            modelBuilder.Entity("Htn.Domain.Directory.DirectoryContact", b =>
+                {
+                    b.HasOne("Htn.Domain.Directory.DirectoryOrg", null)
+                        .WithMany()
+                        .HasForeignKey("OrgId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_directory_contacts_directory_orgs_org_id");
+                });
+
+            modelBuilder.Entity("Htn.Domain.Directory.DirectoryContactHistory", b =>
+                {
+                    b.HasOne("Htn.Domain.Directory.DirectoryContact", null)
+                        .WithMany()
+                        .HasForeignKey("ContactId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_directory_contact_history_directory_contacts_contact_id");
+
+                    b.HasOne("Htn.Domain.Directory.DirectoryOrg", null)
+                        .WithMany()
+                        .HasForeignKey("OrgId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_directory_contact_history_directory_orgs_org_id");
+                });
+
+            modelBuilder.Entity("Htn.Domain.Directory.DirectoryOrg", b =>
+                {
+                    b.HasOne("Htn.Domain.Files.StoredFile", null)
+                        .WithMany()
+                        .HasForeignKey("LogoFileId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_directory_orgs_stored_files_logo_file_id");
+                });
+
             modelBuilder.Entity("Htn.Domain.Events.Event", b =>
                 {
                     b.HasOne("Htn.Domain.Files.StoredFile", null)
@@ -5232,6 +5545,12 @@ namespace Htn.Infrastructure.Data.Migrations
                         .HasForeignKey("AskTierId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .HasConstraintName("fk_leads_sponsor_tiers_ask_tier_id");
+
+                    b.HasOne("Htn.Domain.Directory.DirectoryOrg", null)
+                        .WithMany()
+                        .HasForeignKey("DirectoryOrgId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_leads_directory_orgs_directory_org_id");
 
                     b.HasOne("Htn.Domain.Events.Event", null)
                         .WithMany()
@@ -5464,6 +5783,12 @@ namespace Htn.Infrastructure.Data.Migrations
 
             modelBuilder.Entity("Htn.Domain.Sponsors.EventPartner", b =>
                 {
+                    b.HasOne("Htn.Domain.Directory.DirectoryOrg", null)
+                        .WithMany()
+                        .HasForeignKey("DirectoryOrgId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_event_partners_directory_orgs_directory_org_id");
+
                     b.HasOne("Htn.Domain.Events.Event", null)
                         .WithMany()
                         .HasForeignKey("EventId")
@@ -5512,6 +5837,12 @@ namespace Htn.Infrastructure.Data.Migrations
                         .HasForeignKey("CashPaymentAccountId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .HasConstraintName("fk_sponsors_payment_accounts_cash_payment_account_id");
+
+                    b.HasOne("Htn.Domain.Directory.DirectoryOrg", null)
+                        .WithMany()
+                        .HasForeignKey("DirectoryOrgId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_sponsors_directory_orgs_directory_org_id");
 
                     b.HasOne("Htn.Domain.Events.Event", null)
                         .WithMany()

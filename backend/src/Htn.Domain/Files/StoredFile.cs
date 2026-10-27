@@ -80,6 +80,12 @@ public static class StoredFilePurposes
     public const string SponsorLogo = "sponsor_logo";
 
     /// <summary>
+    /// A logo for a Phase 7 Directory organization (government agency, company, university, non-profit). PNG or JPG,
+    /// at most 1 MB, modeled on <see cref="SponsorLogo"/>. Visible to any signed-in user, not the public.
+    /// </summary>
+    public const string DirectoryLogo = "directory_logo";
+
+    /// <summary>
     /// A speaker's photo (frame 22/23). Neither public set until <c>photo_approved_at</c> is stamped; a public route
     /// then serves it for the agenda and social posts.
     /// </summary>
@@ -91,12 +97,13 @@ public static class StoredFilePurposes
     public const long FinanceReceiptMaxBytes = 5 * 1024 * 1024;
     public const long SponsorLogoMaxBytes = 1024 * 1024;
     public const long SpeakerPhotoMaxBytes = 2 * 1024 * 1024;
+    public const long DirectoryLogoMaxBytes = 1024 * 1024;
 
     /// <summary>Largest width or height of a proof image (phone screenshots and camera photos).</summary>
     public const int PaymentProofMaxDimension = 8192;
 
     /// <summary>Purposes that any signed-in user may download through <c>GET /api/files/{id}</c>.</summary>
-    public static readonly IReadOnlyList<string> PublicToMembers = [LogoLight, LogoDark, SponsorLogo];
+    public static readonly IReadOnlyList<string> PublicToMembers = [LogoLight, LogoDark, SponsorLogo, DirectoryLogo];
 
     /// <summary>Purposes anyone (no sign-in) may download through <c>GET /api/public/files/{id}</c>: the public page and emails.</summary>
     public static readonly IReadOnlyList<string> PublicToEveryone = [LogoLight, LogoDark, EventCover, SponsorLogo];
@@ -109,6 +116,7 @@ public static class StoredFilePurposes
         FinanceReceipt => FinanceReceiptMaxBytes,
         SponsorLogo => SponsorLogoMaxBytes,
         SpeakerPhoto => SpeakerPhotoMaxBytes,
+        DirectoryLogo => DirectoryLogoMaxBytes,
         _ => StoredFile.MaxBytes,
     };
 }

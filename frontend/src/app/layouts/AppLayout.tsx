@@ -40,7 +40,7 @@ const navItems: NavItem[] = [
   { to: '/', label: 'Dashboard', icon: DashboardIcon, end: true },
   { to: '/people', label: 'Organization', icon: PeopleIcon },
   { to: '/events', label: 'Events', icon: CalendarIcon, policy: Policies.EventsView },
-  { to: '/directory', label: 'Directory', icon: BuildingIcon },
+  { to: '/directory', label: 'Directory', icon: BuildingIcon, policy: Policies.DirectoryView },
   { to: '/store', label: 'Merch store', icon: BagIcon },
   { to: '/finance', label: 'Finance', icon: WalletIcon, locked: true, policy: Policies.FinanceView },
   { to: '/my-tasks', label: 'My tasks', icon: CheckSquareIcon, badge: 'myTasks' },

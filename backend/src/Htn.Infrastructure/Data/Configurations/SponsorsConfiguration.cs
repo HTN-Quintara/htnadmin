@@ -98,10 +98,12 @@ internal sealed class SponsorConfiguration : IEntityTypeConfiguration<Sponsor>
             .HasFilter("voided_at IS NULL");
         // The Phase 7 Directory backfill joins sponsors to organizations by this key.
         b.HasIndex(x => x.NameKey).HasDatabaseName("ix_sponsors_name_key");
+        b.HasIndex(x => x.DirectoryOrgId).HasDatabaseName("ix_sponsors_directory_org");
         b.HasOne<Event>().WithMany().HasForeignKey(x => x.EventId).OnDelete(DeleteBehavior.Restrict);
         b.HasOne<SponsorTier>().WithMany().HasForeignKey(x => x.TierId).OnDelete(DeleteBehavior.Restrict);
         b.HasOne<PaymentAccount>().WithMany().HasForeignKey(x => x.CashPaymentAccountId).OnDelete(DeleteBehavior.Restrict);
         b.HasOne<StoredFile>().WithMany().HasForeignKey(x => x.LogoFileId).OnDelete(DeleteBehavior.Restrict);
+        b.HasOne<Htn.Domain.Directory.DirectoryOrg>().WithMany().HasForeignKey(x => x.DirectoryOrgId).OnDelete(DeleteBehavior.Restrict);
     }
 }
 
@@ -188,8 +190,11 @@ internal sealed class EventPartnerConfiguration : IEntityTypeConfiguration<Event
         b.Ignore(x => x.IsTagged);
         // One partner row per normalized org name per event (a re-tag reuses the row).
         b.HasIndex(x => new { x.EventId, x.NameKey }).IsUnique().HasDatabaseName(EventNameIndex);
+        // The Phase 7 Directory backfill joins partners to organizations by name_key.
+        b.HasIndex(x => x.DirectoryOrgId).HasDatabaseName("ix_event_partners_directory_org");
         b.HasOne<Event>().WithMany().HasForeignKey(x => x.EventId).OnDelete(DeleteBehavior.Restrict);
         b.HasOne<StoredFile>().WithMany().HasForeignKey(x => x.LogoFileId).OnDelete(DeleteBehavior.Restrict);
+        b.HasOne<Htn.Domain.Directory.DirectoryOrg>().WithMany().HasForeignKey(x => x.DirectoryOrgId).OnDelete(DeleteBehavior.Restrict);
     }
 }
 

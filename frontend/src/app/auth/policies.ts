@@ -38,6 +38,10 @@ export const Policies = {
   LeadsManage: 'Leads.Manage',
   /** Board, or the lead of the event's Programs committee: speaker links, travel and the agenda. */
   SpeakersManage: 'Speakers.Manage',
+  /** Board, or any committee lead anywhere: read the global directory of organizations and contacts. */
+  DirectoryView: 'Directory.View',
+  /** Board only: create/edit organizations, contacts and verification actions. */
+  DirectoryManage: 'Directory.Manage',
 } as const
 
 export type Policy = (typeof Policies)[keyof typeof Policies] | (string & {})

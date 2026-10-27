@@ -1,5 +1,6 @@
 using Htn.Domain.Common;
 using Htn.Domain.Committees;
+using Htn.Domain.Directory;
 using Htn.Domain.Events;
 using Htn.Domain.Files;
 using Htn.Domain.Finance;
@@ -56,6 +57,7 @@ public static class DevSeeder
         await EnsureFinanceAsync(db, users, sp.GetRequiredService<IFileStorage>(), clock, ct);
         await EnsureSponsorsAsync(db, clock, ct);
         await EnsureLeadsAsync(db, clock, ct);
+        await EnsureDirectoryAsync(db, clock, ct);
         await EnsureAgendaAsync(db, clock, ct);
         await EnsureSpeakerTravelModeAsync(db, clock, ct);
         logger.LogInformation("Development seed data is in place");
@@ -413,6 +415,50 @@ public static class DevSeeder
         var gomez = Lead.Create(ev.Id, new NewLead(LeadKind.Speaker, "Dr. Lara Gomez", "DICT", "Undersecretary",
             "lara.gomez@dict.gov.ph", null, null, null, "Keynote: state of PH cybersecurity", null, "Find secretary contact", null), Guid.Empty, now);
         db.Leads.AddRange(globe, devtools, gomez);
+        await db.SaveChangesAsync(ct);
+    }
+
+    /// <summary>
+    /// Phase 7A (frame 13-equivalent): a government agency, a company and a university in the global directory, one
+    /// with a contact verified recently and one with a contact unverified for over 90 days, so "Needs check" shows.
+    /// </summary>
+    private static async Task EnsureDirectoryAsync(HtnDbContext db, TimeProvider clock, CancellationToken ct)
+    {
+        var now = clock.GetUtcNow();
+        if (await db.DirectoryOrgs.AnyAsync(ct)) return;
+
+        var dict = DirectoryOrg.Create(
+            new NewDirectoryOrg(DirectoryOrgKind.Government, "Department of Information and Communications Technology",
+                "The Secretary", "https://dict.gov.ph", "National ICT policy agency."), Guid.Empty, now);
+        var cloudcorp = DirectoryOrg.Create(
+            new NewDirectoryOrg(DirectoryOrgKind.Company, "CloudCorp PH", null, "https://cloudcorp.ph", null), Guid.Empty, now);
+        var university = DirectoryOrg.Create(
+            new NewDirectoryOrg(DirectoryOrgKind.University, "University of the Philippines Diliman", "The Chancellor",
+                "https://upd.edu.ph", "Partner campus for recruitment drives."), Guid.Empty, now);
+        db.DirectoryOrgs.AddRange(dict, cloudcorp, university);
+
+        // Verified two days ago: not due for a check.
+        var dictContact = DirectoryContact.Create(dict.Id,
+            new NewDirectoryContact("Undersecretary", "Dr. Lara Gomez", "lara.gomez@dict.gov.ph", null, true, null),
+            Guid.Empty, now);
+        dictContact.StillCorrect(Guid.Empty, now.AddDays(-2));
+
+        var cloudcorpContact = DirectoryContact.Create(cloudcorp.Id,
+            new NewDirectoryContact("Partnerships", "Kai Cruz", "kai.cruz@cloudcorp.ph", "+639171234567", true, "finance@cloudcorp.ph"),
+            Guid.Empty, now);
+        cloudcorpContact.StillCorrect(Guid.Empty, now.AddDays(-5));
+
+        // Verified 120 days ago: stale, so this org needs a check.
+        var universityContact = DirectoryContact.Create(university.Id,
+            new NewDirectoryContact("Director, Student Affairs", "Prof. Ana Reyes", "ana.reyes@upd.edu.ph", null, true, null),
+            Guid.Empty, now);
+        universityContact.StillCorrect(Guid.Empty, now.AddDays(-120));
+        db.DirectoryContacts.AddRange(dictContact, cloudcorpContact, universityContact);
+
+        await db.SaveChangesAsync(ct);
+        db.DirectoryContactHistory.Add(DirectoryContactHistory.StillCorrect(dict.Id, dictContact.Id, Guid.Empty, now.AddDays(-2)));
+        db.DirectoryContactHistory.Add(DirectoryContactHistory.StillCorrect(cloudcorp.Id, cloudcorpContact.Id, Guid.Empty, now.AddDays(-5)));
+        db.DirectoryContactHistory.Add(DirectoryContactHistory.StillCorrect(university.Id, universityContact.Id, Guid.Empty, now.AddDays(-120)));
         await db.SaveChangesAsync(ct);
     }
 

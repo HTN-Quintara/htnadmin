@@ -58,11 +58,14 @@ internal sealed class LeadConfiguration : IEntityTypeConfiguration<Lead>
         b.HasIndex(x => x.SponsorId).IsUnique().HasDatabaseName(SponsorIndex).HasFilter("sponsor_id IS NOT NULL");
         b.HasIndex(x => x.SpeakerId).IsUnique().HasDatabaseName(SpeakerIndex).HasFilter("speaker_id IS NOT NULL");
         b.HasIndex(x => x.OwnerPersonId).HasDatabaseName("ix_leads_owner");
+        // The Phase 7 Directory backfill joins leads to organizations by name_key.
+        b.HasIndex(x => x.DirectoryOrgId).HasDatabaseName("ix_leads_directory_org");
         b.HasOne<Event>().WithMany().HasForeignKey(x => x.EventId).OnDelete(DeleteBehavior.Restrict);
         b.HasOne<SponsorTier>().WithMany().HasForeignKey(x => x.AskTierId).OnDelete(DeleteBehavior.Restrict);
         b.HasOne<Person>().WithMany().HasForeignKey(x => x.OwnerPersonId).OnDelete(DeleteBehavior.Restrict);
         b.HasOne<Sponsor>().WithMany().HasForeignKey(x => x.SponsorId).OnDelete(DeleteBehavior.Restrict);
         b.HasOne<Speaker>().WithMany().HasForeignKey(x => x.SpeakerId).OnDelete(DeleteBehavior.Restrict);
+        b.HasOne<Htn.Domain.Directory.DirectoryOrg>().WithMany().HasForeignKey(x => x.DirectoryOrgId).OnDelete(DeleteBehavior.Restrict);
     }
 }
 

@@ -172,7 +172,11 @@ export const routes: RouteObject[] = [
                   },
                 ],
               },
-              comingSoon('/directory', 'Directory', 'Agencies, companies, universities, non-profits and suppliers.'),
+              {
+                path: '/directory',
+                element: <RequirePolicy policy={Policies.DirectoryView} />,
+                children: [{ index: true, lazy: async () => ({ Component: (await import('@/features/directory/DirectoryPage')).DirectoryPage }) }],
+              },
               comingSoon('/store', 'Merch store', 'Leftover stock and pop-up stores.'),
               {
                 // Board only, plus the one finance assistant. The API answers 404 to everyone else, so the module's
