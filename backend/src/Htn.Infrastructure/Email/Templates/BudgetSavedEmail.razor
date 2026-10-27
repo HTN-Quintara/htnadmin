@@ -1,0 +1,28 @@
+<EmailLayout Title="@($"{EventName} budget updated (v{VersionNumber})")" Preheader="@($"{EventName} · version {VersionNumber}")" BrandColor="@BrandColor" LogoCid="@LogoCid" Heading="Budget updated">
+  <p style="margin-top:0;">Hi @FirstName,</p>
+  <p>@SavedBy saved <strong>version @VersionNumber</strong> of the <strong>@EventName</strong> budget.</p>
+  <blockquote style="margin:16px 0;padding:12px 16px;border-left:3px solid @BrandColor;background:#f9fafb;color:#374151;white-space:pre-wrap;">@Reason</blockquote>
+  <table role="presentation" cellpadding="0" cellspacing="0" style="margin:16px 0;font-size:14px;color:#374151;">
+    <tr><td style="padding:2px 16px 2px 0;">Income budgeted</td><td style="padding:2px 0;text-align:right;">@Income</td></tr>
+    <tr><td style="padding:2px 16px 2px 0;">Expenses budgeted</td><td style="padding:2px 0;text-align:right;">@Expenses</td></tr>
+    <tr><td style="padding:2px 16px 2px 0;"><strong>Net</strong></td><td style="padding:2px 0;text-align:right;"><strong>@Net</strong></td></tr>
+  </table>
+  <EmailButton Href="@Link" Label="Open the budget" BrandColor="@BrandColor" />
+</EmailLayout>
+
+@code {
+    [Parameter, EditorRequired] public string FirstName { get; set; } = "";
+    [Parameter, EditorRequired] public string EventName { get; set; } = "";
+    [Parameter, EditorRequired] public int VersionNumber { get; set; }
+    [Parameter, EditorRequired] public string SavedBy { get; set; } = "";
+
+    /// <summary>Why the CFO changed the budget. Always present: the domain requires it on every save.</summary>
+    [Parameter, EditorRequired] public string Reason { get; set; } = "";
+
+    [Parameter, EditorRequired] public string Income { get; set; } = "";
+    [Parameter, EditorRequired] public string Expenses { get; set; } = "";
+    [Parameter, EditorRequired] public string Net { get; set; } = "";
+    [Parameter, EditorRequired] public string Link { get; set; } = "";
+    [Parameter] public string BrandColor { get; set; } = Brand.Color;
+    [Parameter] public string? LogoCid { get; set; }
+}

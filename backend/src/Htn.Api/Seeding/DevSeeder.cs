@@ -1,6 +1,8 @@
 using Htn.Domain.Common;
 using Htn.Domain.Committees;
 using Htn.Domain.Events;
+using Htn.Domain.Files;
+using Htn.Domain.Finance;
 using Htn.Domain.Registrations;
 using Htn.Domain.Settings;
 using Htn.Api.Features.Tasks;
@@ -8,6 +10,7 @@ using Htn.Domain.Tasks;
 using Htn.Domain.Organization;
 using Htn.Infrastructure.Data;
 using Htn.Infrastructure.Identity;
+using Htn.Infrastructure.Storage;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 
@@ -46,6 +49,7 @@ public static class DevSeeder
         await EnsureRegistrationsAsync(db, sp.GetRequiredService<IPublicIdGenerator>(), clock, ct);
         await EnsureCommitteesAsync(db, clock, ct);
         await EnsureTasksAsync(db, clock, ct);
+        await EnsureFinanceAsync(db, users, sp.GetRequiredService<IFileStorage>(), clock, ct);
         logger.LogInformation("Development seed data is in place");
     }
 
@@ -343,5 +347,88 @@ public static class DevSeeder
         var cancelled = Add(regular, [P("Ivan", "Castillo", "ivan.castillo@example.ph")], null, now.AddDays(-7));
         cancelled.Cancel("Duplicate registration (sample data).", null, now.AddDays(-6));
         await db.SaveChangesAsync(ct);
+    }
+
+    /// <summary>
+    /// Enough finance to open frames 24-26 and see something: two accounts to reconcile, a posted entry, one the
+    /// assistant is waiting on, and an expense request. Alex holds the CFO flag so the dev login can post and close,
+    /// and Mika is the finance assistant.
+    /// </summary>
+    private static async Task EnsureFinanceAsync(
+        HtnDbContext db, UserManager<AppUser> users, IFileStorage storage, TimeProvider clock, CancellationToken ct)
+    {
+        var now = clock.GetUtcNow();
+        var today = ManilaTime.ManilaDate(now);
+
+        // The CFO and the finance assistant. Both are flags on the login, unique in the database.
+        var cfo = await users.FindByEmailAsync("alex@hackthenorth.ph");
+        if (cfo is { IsCfo: false } && !await db.Users.AnyAsync(u => u.IsCfo, ct))
+        {
+            cfo.IsCfo = true;
+            await users.UpdateAsync(cfo);
+        }
+        var assistant = await users.FindByEmailAsync("mika@hackthenorth.ph");
+        if (assistant is { IsFinanceAssistant: false } && !await db.Users.AnyAsync(u => u.IsFinanceAssistant, ct))
+        {
+            assistant.IsFinanceAssistant = true;
+            await users.UpdateAsync(assistant);
+        }
+
+        if (!await db.PaymentAccounts.AnyAsync(ct))
+        {
+            var gcash = PaymentAccount.Create(PaymentAccountKind.GCash, "GCash main", null, "HackTheNorth PH", "09171234567", now);
+            gcash.SetDefault(true);
+            gcash.SetFinanceSetup(5_000m, today.AddMonths(-1), isReconcilable: true);
+            var cash = PaymentAccount.Create(PaymentAccountKind.Cash, "Cash on hand", null, "Registration desk", null, now);
+            cash.SetFinanceSetup(2_000m, today.AddMonths(-1), isReconcilable: true);
+            db.PaymentAccounts.AddRange(gcash, cash);
+            await db.SaveChangesAsync(ct);
+        }
+
+        if (await db.LedgerEntries.AnyAsync(e => e.Source == LedgerSource.Manual, ct)) return;
+
+        var account = await db.PaymentAccounts.AsNoTracking()
+            .Where(a => a.IsActive && a.Kind == PaymentAccountKind.GCash)
+            .Select(a => a.Id).FirstOrDefaultAsync(ct);
+        if (account == Guid.Empty) return;
+        var org = await db.Funds.FirstOrDefaultAsync(f => f.Id == Funds.OrganizationId, ct);
+        if (org is null) return;
+
+        // A hand-entered row always carries a receipt, so the bytes are written too: the download has to work.
+        var receipt = await ReceiptAsync(db, storage, cfo?.Id, now, ct);
+        var pendingReceipt = await ReceiptAsync(db, storage, assistant?.Id, now, ct);
+
+        db.LedgerEntries.Add(LedgerEntry.Posted(
+            new NewLedgerEntry(org.Id, account, LedgerCategories.WriteOffId, today.AddDays(-9), LedgerDirection.Out,
+                4_500m, "OR-2041", "Domain renewal and hosting", receipt, LedgerSource.Manual, null),
+            cfo?.Id, now));
+        db.LedgerEntries.Add(LedgerEntry.Pending(
+            new NewLedgerEntry(org.Id, account, LedgerCategories.WriteOffId, today.AddDays(-2), LedgerDirection.Out,
+                1_250m, null, "Printing for the orientation", pendingReceipt, LedgerSource.Manual, null),
+            assistant?.Id ?? Guid.Empty, now));
+
+        var requester = await db.People.AsNoTracking()
+            .Where(p => p.Email == "leo@hackthenorth.ph").Select(p => p.Id).FirstOrDefaultAsync(ct);
+        if (requester != Guid.Empty)
+        {
+            db.ExpenseRequests.Add(ExpenseRequest.Create("Year-end party", "Venue and food for the whole team",
+                40_000m, LedgerCategories.WriteOffId, today.AddMonths(2), requester, now));
+        }
+
+        await db.SaveChangesAsync(ct);
+    }
+
+    /// <summary>A 1x1 PNG on disk plus its metadata row, so a seeded receipt can actually be downloaded.</summary>
+    private static async Task<Guid> ReceiptAsync(
+        HtnDbContext db, IFileStorage storage, Guid? actorId, DateTimeOffset at, CancellationToken ct)
+    {
+        var bytes = Convert.FromBase64String(
+            "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFAAH/q842iQAAAABJRU5ErkJggg==");
+        var file = StoredFile.Create(FileSignatures.PngContentType, bytes.LongLength,
+            Convert.ToHexStringLower(System.Security.Cryptography.SHA256.HashData(bytes)),
+            StoredFilePurposes.FinanceReceipt, "receipt.png", at, actorId);
+        await storage.SaveAsync(file.Id, bytes, ct);
+        db.StoredFiles.Add(file);
+        return file.Id;
     }
 }

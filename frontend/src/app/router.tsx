@@ -144,9 +144,21 @@ export const routes: RouteObject[] = [
               comingSoon('/directory', 'Directory', 'Agencies, companies, universities, non-profits and suppliers.'),
               comingSoon('/store', 'Merch store', 'Leftover stock and pop-up stores.'),
               {
+                // Board only, plus the one finance assistant. The API answers 404 to everyone else, so the module's
+                // existence is not revealed; this guard only saves them a pointless round trip.
                 path: '/finance',
                 element: <RequirePolicy policy={Policies.FinanceView} />,
-                children: [{ index: true, element: <ComingSoonPage title="Finance" description="Cashflow, ledger, balancing and audit. Board only." /> }],
+                children: [
+                  {
+                    lazy: async () => ({ Component: (await import('@/features/finance/FinanceLayout')).FinanceLayout }),
+                    children: [
+                      { index: true, lazy: async () => ({ Component: (await import('@/features/finance/FinancePage')).FinancePage }) },
+                      { path: 'budgets/:eventId', lazy: async () => ({ Component: (await import('@/features/finance/BudgetPage')).BudgetPage }) },
+                      { path: 'requests', lazy: async () => ({ Component: (await import('@/features/finance/RequestsPage')).RequestsPage }) },
+                      { path: '*', element: <NotFoundPage /> },
+                    ],
+                  },
+                ],
               },
               { path: '/my-tasks', lazy: async () => ({ Component: (await import('@/features/tasks/MyTasksPage')).MyTasksPage }) },
               { path: '/tasks', element: <Navigate to="/my-tasks" replace /> },

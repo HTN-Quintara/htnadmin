@@ -66,9 +66,16 @@ public static class StoredFilePurposes
     /// </summary>
     public const string TaskAttachment = "task_attachment";
 
+    /// <summary>
+    /// A PNG, JPG or PDF receipt on a ledger entry or an expense request. Board-only, and never in a public list: it
+    /// is served solely by <c>GET /api/finance/ledger/{id}/receipt</c>, always as a download.
+    /// </summary>
+    public const string FinanceReceipt = "finance_receipt";
+
     public const long EventCoverMaxBytes = 2 * 1024 * 1024;
     public const long PaymentProofMaxBytes = 5 * 1024 * 1024;
     public const long TaskAttachmentMaxBytes = 5 * 1024 * 1024;
+    public const long FinanceReceiptMaxBytes = 5 * 1024 * 1024;
 
     /// <summary>Largest width or height of a proof image (phone screenshots and camera photos).</summary>
     public const int PaymentProofMaxDimension = 8192;
@@ -84,6 +91,7 @@ public static class StoredFilePurposes
         EventCover => EventCoverMaxBytes,
         PaymentProof => PaymentProofMaxBytes,
         TaskAttachment => TaskAttachmentMaxBytes,
+        FinanceReceipt => FinanceReceiptMaxBytes,
         _ => StoredFile.MaxBytes,
     };
 }

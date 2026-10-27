@@ -49,6 +49,23 @@ public sealed class ApiClient(HttpClient http)
         return await http.SendAsync(req);
     }
 
+    /// <summary>A multipart post with text fields beside the file: the shape finance uses for an entry + its receipt.</summary>
+    public async Task<HttpResponseMessage> PostFormFileAsync(
+        string url, IReadOnlyDictionary<string, string?> fields, byte[] content, string fileName, string contentType,
+        string field = "file", bool csrf = true)
+    {
+        using var req = new HttpRequestMessage(HttpMethod.Post, url);
+        var form = new MultipartFormDataContent();
+        foreach (var (key, value) in fields)
+            if (value is not null) form.Add(new StringContent(value), key);
+        var file = new ByteArrayContent(content);
+        file.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue(contentType);
+        form.Add(file, field, fileName);
+        req.Content = form;
+        if (csrf) req.Headers.Add("X-CSRF-TOKEN", await CsrfTokenAsync());
+        return await http.SendAsync(req);
+    }
+
     public Task<HttpResponseMessage> LoginAsync(string email, string password) =>
         PostAsync("/api/auth/login", new { email, password });
 

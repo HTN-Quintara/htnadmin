@@ -55,6 +55,28 @@ public static class ManilaTime
             Local(startLocal).ToUniversalTime(), Local(startLocal.AddMonths(3)).ToUniversalTime());
     }
 
+    /// <summary>The Manila calendar date of an instant: the date on a receipt, as the CFO would write it.</summary>
+    public static DateOnly ManilaDate(DateTimeOffset at) => DateOnly.FromDateTime(ToManila(at).Date);
+
+    /// <summary>
+    /// The calendar month containing <paramref name="at"/>, in Manila local time. Finance periods are months, and
+    /// ledger entries carry a <c>date</c>, so the bounds come back as dates: no timezone arithmetic in the SQL.
+    /// </summary>
+    public static MonthWindow Month(DateTimeOffset at)
+    {
+        var local = ToManila(at);
+        return Month(local.Year, local.Month);
+    }
+
+    /// <summary>The half-open date range <c>[Start, EndExclusive)</c> of one Manila calendar month.</summary>
+    public static MonthWindow Month(int year, int month)
+    {
+        if (year is < 2020 or > 2100) throw new ArgumentOutOfRangeException(nameof(year));
+        if (month is < 1 or > 12) throw new ArgumentOutOfRangeException(nameof(month));
+        var start = new DateOnly(year, month, 1);
+        return new MonthWindow(year, month, start, start.AddMonths(1));
+    }
+
     private static DateTimeOffset Local(DateTime unspecified) => new(unspecified, Zone.GetUtcOffset(unspecified));
 }
 
@@ -66,4 +88,14 @@ public readonly record struct QuarterWindow(int Year, int Quarter, DateTimeOffse
     public string Label => $"Q{Quarter} {Year}";
 
     public bool Contains(DateTimeOffset at) => at >= Start && at < End;
+}
+
+/// <summary>A half-open date range <c>[Start, EndExclusive)</c> covering one calendar month in Manila time.</summary>
+/// <param name="Year">Manila-local year.</param>
+/// <param name="Month">1-12.</param>
+public readonly record struct MonthWindow(int Year, int Month, DateOnly Start, DateOnly EndExclusive)
+{
+    public string Label => $"{Start:MMMM yyyy}";
+
+    public bool Contains(DateOnly date) => date >= Start && date < EndExclusive;
 }

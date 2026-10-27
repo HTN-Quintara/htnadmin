@@ -14,6 +14,8 @@ export const meSchema = z.object({
   email: z.string(),
   level: staffLevelSchema.nullable(),
   isCfo: z.boolean(),
+  /** The one goon who may add ledger entries; they wait for the CFO's approval. */
+  isFinanceAssistant: z.boolean(),
   twoFactorEnabled: z.boolean(),
   /** True only while the board 2FA gate applies (board account without 2FA). */
   twoFactorRequired: z.boolean(),

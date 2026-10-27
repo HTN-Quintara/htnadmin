@@ -12,6 +12,7 @@ export const boardMe: Me = {
   email: 'alex@hackthenorth.ph',
   level: 'Board',
   isCfo: false,
+  isFinanceAssistant: false,
   twoFactorEnabled: true,
   // The server sends true only while the board 2FA gate applies.
   twoFactorRequired: false,
@@ -21,6 +22,7 @@ export const boardMe: Me = {
     'Settings.Personal',
     'Settings.Manage',
     'Finance.View',
+    'Finance.Request',
     'Events.View',
     'Events.Manage',
     'Registrations.Manage',
@@ -81,6 +83,30 @@ export const server = setupServer(...defaultHandlers)
 
 /** A board account that has not turned on 2FA yet: the server gate applies. */
 export const boardWithout2faMe: Me = { ...boardMe, twoFactorEnabled: false, twoFactorRequired: true }
+
+/** The CFO: the only person who posts money, reconciles accounts and closes months. */
+export const cfoMe: Me = {
+  ...boardMe,
+  id: 'u4',
+  personId: 'p4',
+  firstName: 'Noel',
+  lastName: 'Cruz',
+  email: 'noel@hackthenorth.ph',
+  isCfo: true,
+  policies: [...boardMe.policies, 'Finance.Post', 'Finance.Approve'],
+}
+
+/** The finance assistant: a goon who may add ledger entries, which wait for the CFO. */
+export const financeAssistantMe: Me = {
+  ...goonMe,
+  id: 'u5',
+  personId: 'p5',
+  firstName: 'Bea',
+  lastName: 'Lim',
+  email: 'bea@hackthenorth.ph',
+  isFinanceAssistant: true,
+  policies: [...goonMe.policies, 'Finance.View'],
+}
 
 /** ProblemDetails as the API writes it (code in the extensions). */
 export function problem(status: number, title: string, code?: string, extra: Record<string, unknown> = {}) {

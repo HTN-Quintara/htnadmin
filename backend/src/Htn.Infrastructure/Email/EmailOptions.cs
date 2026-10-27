@@ -54,6 +54,12 @@ public sealed class AppLinkOptions
     /// <summary>The task detail dialog over an event's board (frame 08), deep-linked from a mention email.</summary>
     public string Task(Guid eventId, Guid taskId) => $"{PublicBaseUrl.TrimEnd('/')}/events/{eventId}/tasks/{taskId}";
 
+    /// <summary>An event's budget against its actuals (frame 25), board only.</summary>
+    public string Budget(Guid eventId) => $"{PublicBaseUrl.TrimEnd('/')}/finance/budgets/{eventId}";
+
+    /// <summary>The expense requests screen (frame 26), board only.</summary>
+    public string ExpenseRequests() => $"{PublicBaseUrl.TrimEnd('/')}/finance/requests";
+
     /// <summary>Public registration page of an event.</summary>
     public string Register(string slug) => $"{PublicBaseUrl.TrimEnd('/')}/r/{Uri.EscapeDataString(slug)}";
 }

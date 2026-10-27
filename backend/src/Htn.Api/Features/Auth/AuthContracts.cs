@@ -28,6 +28,8 @@ public sealed record MeDto(
     string Email,
     string? Level,
     bool IsCfo,
+    /// <summary>The one goon who may add ledger entries; the finance screens show them a narrower view.</summary>
+    bool IsFinanceAssistant,
     bool TwoFactorEnabled,
     bool TwoFactorRequired,
     IReadOnlyList<string> Policies,

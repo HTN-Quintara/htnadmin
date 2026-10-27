@@ -780,6 +780,736 @@ namespace Htn.Infrastructure.Data.Migrations
                         });
                 });
 
+            modelBuilder.Entity("Htn.Domain.Finance.AccountReconciliation", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<decimal>("BookBalance")
+                        .HasPrecision(12, 2)
+                        .HasColumnType("numeric(12,2)")
+                        .HasColumnName("book_balance");
+
+                    b.Property<decimal>("Difference")
+                        .HasPrecision(12, 2)
+                        .HasColumnType("numeric(12,2)")
+                        .HasColumnName("difference");
+
+                    b.Property<int>("Month")
+                        .HasColumnType("integer")
+                        .HasColumnName("month");
+
+                    b.Property<string>("Note")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("note");
+
+                    b.Property<Guid>("PaymentAccountId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("payment_account_id");
+
+                    b.Property<DateTimeOffset>("ReconciledAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("reconciled_at");
+
+                    b.Property<Guid>("ReconciledById")
+                        .HasColumnType("uuid")
+                        .HasColumnName("reconciled_by_id");
+
+                    b.Property<uint>("RowVersion")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.Property<decimal>("StatementBalance")
+                        .HasPrecision(12, 2)
+                        .HasColumnType("numeric(12,2)")
+                        .HasColumnName("statement_balance");
+
+                    b.Property<string>("SupersedeReason")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("supersede_reason");
+
+                    b.Property<DateTimeOffset?>("SupersededAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("superseded_at");
+
+                    b.Property<Guid?>("SupersededById")
+                        .HasColumnType("uuid")
+                        .HasColumnName("superseded_by_id");
+
+                    b.Property<int>("Year")
+                        .HasColumnType("integer")
+                        .HasColumnName("year");
+
+                    b.HasKey("Id")
+                        .HasName("pk_account_reconciliations");
+
+                    b.HasIndex("PaymentAccountId", "Year", "Month")
+                        .IsUnique()
+                        .HasDatabaseName("ux_account_reconciliations_open")
+                        .HasFilter("superseded_at IS NULL");
+
+                    b.ToTable("account_reconciliations", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_account_reconciliations_amounts", "round(statement_balance, 2) = statement_balance AND round(book_balance, 2) = book_balance AND difference = statement_balance - book_balance");
+
+                            t.HasCheckConstraint("ck_account_reconciliations_period", "year BETWEEN 2020 AND 2100 AND month BETWEEN 1 AND 12");
+
+                            t.HasCheckConstraint("ck_account_reconciliations_superseded", "(superseded_at IS NULL) = (supersede_reason IS NULL) AND (superseded_at IS NULL) = (superseded_by_id IS NULL) AND (superseded_at IS NULL OR superseded_at >= reconciled_at)");
+                        });
+                });
+
+            modelBuilder.Entity("Htn.Domain.Finance.EventBudget", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid>("CurrentVersionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("current_version_id");
+
+                    b.Property<Guid>("EventId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("event_id");
+
+                    b.Property<uint>("RowVersion")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<int>("VersionCount")
+                        .HasColumnType("integer")
+                        .HasColumnName("version_count");
+
+                    b.HasKey("Id")
+                        .HasName("pk_event_budgets");
+
+                    b.HasIndex("EventId")
+                        .IsUnique()
+                        .HasDatabaseName("ux_event_budgets_event");
+
+                    b.ToTable("event_budgets", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_event_budgets_versions", "version_count >= 0 AND updated_at >= created_at");
+                        });
+                });
+
+            modelBuilder.Entity("Htn.Domain.Finance.EventBudgetLine", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<decimal>("AmountBudgeted")
+                        .HasPrecision(12, 2)
+                        .HasColumnType("numeric(12,2)")
+                        .HasColumnName("amount_budgeted");
+
+                    b.Property<Guid>("CategoryId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("category_id");
+
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)")
+                        .HasColumnName("kind");
+
+                    b.Property<string>("Label")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)")
+                        .HasColumnName("label");
+
+                    b.Property<string>("Note")
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)")
+                        .HasColumnName("note");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("integer")
+                        .HasColumnName("sort_order");
+
+                    b.Property<Guid>("VersionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("version_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_event_budget_lines");
+
+                    b.HasIndex("CategoryId")
+                        .HasDatabaseName("ix_event_budget_lines_category_id");
+
+                    b.HasIndex("VersionId", "CategoryId", "Kind")
+                        .IsUnique()
+                        .HasDatabaseName("ux_event_budget_lines_category");
+
+                    b.ToTable("event_budget_lines", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_event_budget_lines_amount", "amount_budgeted > 0 AND round(amount_budgeted, 2) = amount_budgeted");
+
+                            t.HasCheckConstraint("ck_event_budget_lines_kind", "kind IN ('Income', 'Expense')");
+                        });
+                });
+
+            modelBuilder.Entity("Htn.Domain.Finance.EventBudgetVersion", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("BudgetId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("budget_id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid>("CreatedById")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by_id");
+
+                    b.Property<string>("Reason")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("reason");
+
+                    b.Property<int>("VersionNumber")
+                        .HasColumnType("integer")
+                        .HasColumnName("version_number");
+
+                    b.HasKey("Id")
+                        .HasName("pk_event_budget_versions");
+
+                    b.HasIndex("BudgetId", "VersionNumber")
+                        .IsUnique()
+                        .HasDatabaseName("ux_event_budget_versions_number");
+
+                    b.ToTable("event_budget_versions", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_event_budget_versions_number", "version_number >= 1 AND char_length(reason) > 0");
+                        });
+                });
+
+            modelBuilder.Entity("Htn.Domain.Finance.ExpenseRequest", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<decimal>("Amount")
+                        .HasPrecision(12, 2)
+                        .HasColumnType("numeric(12,2)")
+                        .HasColumnName("amount");
+
+                    b.Property<string>("CancelReason")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("cancel_reason");
+
+                    b.Property<DateTimeOffset?>("CancelledAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("cancelled_at");
+
+                    b.Property<Guid?>("CancelledById")
+                        .HasColumnType("uuid")
+                        .HasColumnName("cancelled_by_id");
+
+                    b.Property<Guid>("CategoryId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("category_id");
+
+                    b.Property<DateTimeOffset?>("DecidedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("decided_at");
+
+                    b.Property<Guid?>("DecidedById")
+                        .HasColumnType("uuid")
+                        .HasColumnName("decided_by_id");
+
+                    b.Property<string>("DecisionReason")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("decision_reason");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("description");
+
+                    b.Property<DateOnly?>("NeededBy")
+                        .HasColumnType("date")
+                        .HasColumnName("needed_by");
+
+                    b.Property<DateTimeOffset?>("PaidAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("paid_at");
+
+                    b.Property<Guid?>("PaidById")
+                        .HasColumnType("uuid")
+                        .HasColumnName("paid_by_id");
+
+                    b.Property<Guid?>("PaidEntryId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("paid_entry_id");
+
+                    b.Property<DateTimeOffset>("RequestedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("requested_at");
+
+                    b.Property<Guid>("RequestedById")
+                        .HasColumnType("uuid")
+                        .HasColumnName("requested_by_id");
+
+                    b.Property<uint>("RowVersion")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)")
+                        .HasColumnName("status");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)")
+                        .HasColumnName("title");
+
+                    b.HasKey("Id")
+                        .HasName("pk_expense_requests");
+
+                    b.HasIndex("CategoryId")
+                        .HasDatabaseName("ix_expense_requests_category_id");
+
+                    b.HasIndex("PaidEntryId")
+                        .HasDatabaseName("ix_expense_requests_paid_entry_id");
+
+                    b.HasIndex("RequestedById")
+                        .HasDatabaseName("ix_expense_requests_requested_by_id");
+
+                    b.HasIndex("Status", "RequestedAt")
+                        .HasDatabaseName("ix_expense_requests_status_requested_at");
+
+                    b.ToTable("expense_requests", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_expense_requests_amount", "amount > 0 AND round(amount, 2) = amount");
+
+                            t.HasCheckConstraint("ck_expense_requests_cancelled", "(status = 'Cancelled') = (cancelled_at IS NOT NULL) AND (cancelled_at IS NULL) = (cancel_reason IS NULL)");
+
+                            t.HasCheckConstraint("ck_expense_requests_decided", "(status IN ('Approved', 'Rejected', 'Paid')) = (decided_at IS NOT NULL) AND (status <> 'Rejected' OR decision_reason IS NOT NULL) AND (decided_at IS NULL OR decided_at >= requested_at)");
+
+                            t.HasCheckConstraint("ck_expense_requests_paid", "(status = 'Paid') = (paid_at IS NOT NULL) AND (paid_at IS NULL) = (paid_entry_id IS NULL) AND (paid_at IS NULL OR paid_at >= decided_at)");
+
+                            t.HasCheckConstraint("ck_expense_requests_status", "status IN ('Pending', 'Approved', 'Rejected', 'Paid', 'Cancelled')");
+                        });
+                });
+
+            modelBuilder.Entity("Htn.Domain.Finance.Fund", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTimeOffset?>("ClosedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("closed_at");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("EventId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("event_id");
+
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)")
+                        .HasColumnName("kind");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)")
+                        .HasColumnName("name");
+
+                    b.Property<uint>("RowVersion")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.Property<DateTimeOffset?>("SweptAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("swept_at");
+
+                    b.Property<Guid?>("SweptByTransferGroupId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("swept_by_transfer_group_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_funds");
+
+                    b.HasIndex("EventId")
+                        .IsUnique()
+                        .HasDatabaseName("ux_funds_event")
+                        .HasFilter("event_id IS NOT NULL");
+
+                    b.HasIndex("Kind")
+                        .IsUnique()
+                        .HasDatabaseName("ux_funds_organization")
+                        .HasFilter("kind = 'Organization'");
+
+                    b.ToTable("funds", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_funds_closed", "closed_at IS NULL OR kind = 'Organization' OR (swept_at IS NOT NULL AND closed_at >= swept_at)");
+
+                            t.HasCheckConstraint("ck_funds_event", "(kind = 'Event') = (event_id IS NOT NULL)");
+
+                            t.HasCheckConstraint("ck_funds_kind", "kind IN ('Organization', 'Event')");
+
+                            t.HasCheckConstraint("ck_funds_swept", "(swept_at IS NULL) = (swept_by_transfer_group_id IS NULL) AND (swept_at IS NULL OR kind = 'Event') AND (swept_at IS NULL OR swept_at >= created_at)");
+                        });
+                });
+
+            modelBuilder.Entity("Htn.Domain.Finance.LedgerCategory", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
+                        .HasColumnName("code");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<DateTimeOffset?>("DeactivatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("deactivated_at");
+
+                    b.Property<string>("DeactivationReason")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("deactivation_reason");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_active");
+
+                    b.Property<bool>("IsSystem")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_system");
+
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)")
+                        .HasColumnName("kind");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(80)
+                        .HasColumnType("character varying(80)")
+                        .HasColumnName("name");
+
+                    b.Property<uint>("RowVersion")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("integer")
+                        .HasColumnName("sort_order");
+
+                    b.HasKey("Id")
+                        .HasName("pk_ledger_categories");
+
+                    b.HasIndex("Code")
+                        .IsUnique()
+                        .HasDatabaseName("ux_ledger_categories_code");
+
+                    b.HasIndex("IsActive", "SortOrder")
+                        .HasDatabaseName("ix_ledger_categories_is_active_sort_order");
+
+                    b.ToTable("ledger_categories", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_ledger_categories_code", "code ~ '^[a-z0-9_]+$'");
+
+                            t.HasCheckConstraint("ck_ledger_categories_deactivated", "(is_active AND deactivated_at IS NULL AND deactivation_reason IS NULL) OR (NOT is_active AND deactivated_at IS NOT NULL AND deactivation_reason IS NOT NULL)");
+
+                            t.HasCheckConstraint("ck_ledger_categories_kind", "kind IN ('Income', 'Expense')");
+
+                            t.HasCheckConstraint("ck_ledger_categories_system_active", "NOT is_system OR is_active");
+                        });
+                });
+
+            modelBuilder.Entity("Htn.Domain.Finance.LedgerEntry", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<decimal>("Amount")
+                        .HasPrecision(12, 2)
+                        .HasColumnType("numeric(12,2)")
+                        .HasColumnName("amount");
+
+                    b.Property<DateTimeOffset?>("ApprovedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("approved_at");
+
+                    b.Property<Guid?>("ApprovedById")
+                        .HasColumnType("uuid")
+                        .HasColumnName("approved_by_id");
+
+                    b.Property<Guid>("CategoryId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("category_id");
+
+                    b.Property<Guid?>("ContraOfEntryId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("contra_of_entry_id");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)")
+                        .HasColumnName("description");
+
+                    b.Property<string>("Direction")
+                        .IsRequired()
+                        .HasMaxLength(8)
+                        .HasColumnType("character varying(8)")
+                        .HasColumnName("direction");
+
+                    b.Property<DateTimeOffset>("EnteredAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("entered_at");
+
+                    b.Property<Guid?>("EnteredById")
+                        .HasColumnType("uuid")
+                        .HasColumnName("entered_by_id");
+
+                    b.Property<DateOnly>("EntryDate")
+                        .HasColumnType("date")
+                        .HasColumnName("entry_date");
+
+                    b.Property<Guid>("FundId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("fund_id");
+
+                    b.Property<Guid?>("MonthCloseId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("month_close_id");
+
+                    b.Property<Guid?>("PaymentAccountId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("payment_account_id");
+
+                    b.Property<Guid?>("ReceiptFileId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("receipt_file_id");
+
+                    b.Property<string>("Reference")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("reference");
+
+                    b.Property<uint>("RowVersion")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.Property<string>("Source")
+                        .IsRequired()
+                        .HasMaxLength(24)
+                        .HasColumnType("character varying(24)")
+                        .HasColumnName("source");
+
+                    b.Property<Guid?>("SourceId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("source_id");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)")
+                        .HasColumnName("status");
+
+                    b.Property<Guid?>("TransferGroupId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("transfer_group_id");
+
+                    b.Property<string>("VoidReason")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("void_reason");
+
+                    b.Property<DateTimeOffset?>("VoidedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("voided_at");
+
+                    b.Property<Guid?>("VoidedById")
+                        .HasColumnType("uuid")
+                        .HasColumnName("voided_by_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_ledger_entries");
+
+                    b.HasIndex("CategoryId")
+                        .HasDatabaseName("ix_ledger_entries_category_id");
+
+                    b.HasIndex("ContraOfEntryId")
+                        .HasDatabaseName("ix_ledger_entries_contra_of_entry_id");
+
+                    b.HasIndex("EntryDate")
+                        .HasDatabaseName("ix_ledger_entries_pending")
+                        .HasFilter("status = 'Pending'");
+
+                    b.HasIndex("MonthCloseId")
+                        .HasDatabaseName("ix_ledger_entries_month_close_id");
+
+                    b.HasIndex("ReceiptFileId")
+                        .HasDatabaseName("ix_ledger_entries_receipt_file_id");
+
+                    b.HasIndex("TransferGroupId")
+                        .HasDatabaseName("ix_ledger_entries_transfer_group")
+                        .HasFilter("transfer_group_id IS NOT NULL");
+
+                    b.HasIndex("EntryDate", "Id")
+                        .HasDatabaseName("ix_ledger_entries_entry_date_id");
+
+                    b.HasIndex("FundId", "CategoryId")
+                        .HasDatabaseName("ix_ledger_entries_category")
+                        .HasFilter("status = 'Posted'");
+
+                    b.HasIndex("Source", "SourceId")
+                        .IsUnique()
+                        .HasDatabaseName("ux_ledger_entries_source")
+                        .HasFilter("source_id IS NOT NULL AND voided_at IS NULL");
+
+                    b.HasIndex("FundId", "Status", "EntryDate")
+                        .HasDatabaseName("ix_ledger_entries_fund_id_status_entry_date");
+
+                    b.HasIndex("PaymentAccountId", "Status", "EntryDate")
+                        .HasDatabaseName("ix_ledger_entries_payment_account_id_status_entry_date");
+
+                    b.ToTable("ledger_entries", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_ledger_entries_amount", "amount > 0 AND round(amount, 2) = amount");
+
+                            t.HasCheckConstraint("ck_ledger_entries_approved", "(status <> 'Pending' OR approved_at IS NULL) AND (status <> 'Posted' OR approved_at IS NOT NULL) AND (approved_at IS NULL OR approved_at >= entered_at)");
+
+                            t.HasCheckConstraint("ck_ledger_entries_closed", "month_close_id IS NULL OR status = 'Posted'");
+
+                            t.HasCheckConstraint("ck_ledger_entries_contra", "(source = 'Contra') = (contra_of_entry_id IS NOT NULL)");
+
+                            t.HasCheckConstraint("ck_ledger_entries_description", "char_length(description) > 0");
+
+                            t.HasCheckConstraint("ck_ledger_entries_direction", "direction IN ('In', 'Out')");
+
+                            t.HasCheckConstraint("ck_ledger_entries_receipt", "source NOT IN ('Manual', 'ExpenseRequest') OR receipt_file_id IS NOT NULL");
+
+                            t.HasCheckConstraint("ck_ledger_entries_source", "source IN ('Manual', 'TicketPayment', 'Contra', 'Transfer', 'SurplusSweep', 'ExpenseRequest', 'SponsorPayment', 'SupplierPayment', 'MerchSale', 'MembershipPayment', 'PopUpWriteOff')");
+
+                            t.HasCheckConstraint("ck_ledger_entries_status", "status IN ('Pending', 'Posted', 'Voided')");
+
+                            t.HasCheckConstraint("ck_ledger_entries_transfer", "(source IN ('Transfer', 'SurplusSweep')) = (transfer_group_id IS NOT NULL)");
+
+                            t.HasCheckConstraint("ck_ledger_entries_void", "(status = 'Voided') = (voided_at IS NOT NULL) AND (voided_at IS NULL) = (void_reason IS NULL) AND (voided_at IS NULL OR voided_at >= entered_at)");
+                        });
+                });
+
+            modelBuilder.Entity("Htn.Domain.Finance.MonthClose", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTimeOffset>("ClosedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("closed_at");
+
+                    b.Property<Guid>("ClosedById")
+                        .HasColumnType("uuid")
+                        .HasColumnName("closed_by_id");
+
+                    b.Property<int>("Month")
+                        .HasColumnType("integer")
+                        .HasColumnName("month");
+
+                    b.Property<string>("Note")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("note");
+
+                    b.Property<string>("ReopenReason")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("reopen_reason");
+
+                    b.Property<DateTimeOffset?>("ReopenedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("reopened_at");
+
+                    b.Property<Guid?>("ReopenedById")
+                        .HasColumnType("uuid")
+                        .HasColumnName("reopened_by_id");
+
+                    b.Property<uint>("RowVersion")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.Property<int>("Year")
+                        .HasColumnType("integer")
+                        .HasColumnName("year");
+
+                    b.HasKey("Id")
+                        .HasName("pk_month_closes");
+
+                    b.HasIndex("Year", "Month")
+                        .IsUnique()
+                        .HasDatabaseName("ux_month_closes_open")
+                        .HasFilter("reopened_at IS NULL");
+
+                    b.ToTable("month_closes", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_month_closes_period", "year BETWEEN 2020 AND 2100 AND month BETWEEN 1 AND 12");
+
+                            t.HasCheckConstraint("ck_month_closes_reopened", "(reopened_at IS NULL) = (reopen_reason IS NULL) AND (reopened_at IS NULL) = (reopened_by_id IS NULL) AND (reopened_at IS NULL OR reopened_at >= closed_at)");
+                        });
+                });
+
             modelBuilder.Entity("Htn.Domain.Organization.Person", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1686,6 +2416,12 @@ namespace Htn.Infrastructure.Data.Migrations
                         .HasColumnType("boolean")
                         .HasColumnName("is_default");
 
+                    b.Property<bool>("IsReconcilable")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true)
+                        .HasColumnName("is_reconcilable");
+
                     b.Property<string>("Kind")
                         .IsRequired()
                         .HasMaxLength(16)
@@ -1697,6 +2433,15 @@ namespace Htn.Infrastructure.Data.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)")
                         .HasColumnName("label");
+
+                    b.Property<decimal>("OpeningBalance")
+                        .HasPrecision(12, 2)
+                        .HasColumnType("numeric(12,2)")
+                        .HasColumnName("opening_balance");
+
+                    b.Property<DateOnly?>("OpeningBalanceAsOf")
+                        .HasColumnType("date")
+                        .HasColumnName("opening_balance_as_of");
 
                     b.HasKey("Id")
                         .HasName("pk_payment_accounts");
@@ -1720,6 +2465,8 @@ namespace Htn.Infrastructure.Data.Migrations
                             t.HasCheckConstraint("ck_payment_accounts_kind", "kind IN ('GCash', 'Bank', 'Cash')");
 
                             t.HasCheckConstraint("ck_payment_accounts_number", "kind = 'Cash' OR account_number IS NOT NULL");
+
+                            t.HasCheckConstraint("ck_payment_accounts_opening_balance", "round(opening_balance, 2) = opening_balance");
                         });
                 });
 
@@ -2820,6 +3567,119 @@ namespace Htn.Infrastructure.Data.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
                         .HasConstraintName("fk_vouchers_events_event_id");
+                });
+
+            modelBuilder.Entity("Htn.Domain.Finance.AccountReconciliation", b =>
+                {
+                    b.HasOne("Htn.Domain.Settings.PaymentAccount", null)
+                        .WithMany()
+                        .HasForeignKey("PaymentAccountId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_account_reconciliations_payment_accounts_payment_account_id");
+                });
+
+            modelBuilder.Entity("Htn.Domain.Finance.EventBudget", b =>
+                {
+                    b.HasOne("Htn.Domain.Events.Event", null)
+                        .WithMany()
+                        .HasForeignKey("EventId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_event_budgets_events_event_id");
+                });
+
+            modelBuilder.Entity("Htn.Domain.Finance.EventBudgetLine", b =>
+                {
+                    b.HasOne("Htn.Domain.Finance.LedgerCategory", null)
+                        .WithMany()
+                        .HasForeignKey("CategoryId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_event_budget_lines_ledger_categories_category_id");
+
+                    b.HasOne("Htn.Domain.Finance.EventBudgetVersion", null)
+                        .WithMany()
+                        .HasForeignKey("VersionId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_event_budget_lines_event_budget_versions_version_id");
+                });
+
+            modelBuilder.Entity("Htn.Domain.Finance.EventBudgetVersion", b =>
+                {
+                    b.HasOne("Htn.Domain.Finance.EventBudget", null)
+                        .WithMany()
+                        .HasForeignKey("BudgetId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_event_budget_versions_event_budgets_budget_id");
+                });
+
+            modelBuilder.Entity("Htn.Domain.Finance.ExpenseRequest", b =>
+                {
+                    b.HasOne("Htn.Domain.Finance.LedgerCategory", null)
+                        .WithMany()
+                        .HasForeignKey("CategoryId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_expense_requests_ledger_categories_category_id");
+
+                    b.HasOne("Htn.Domain.Finance.LedgerEntry", null)
+                        .WithMany()
+                        .HasForeignKey("PaidEntryId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_expense_requests_ledger_entries_paid_entry_id");
+                });
+
+            modelBuilder.Entity("Htn.Domain.Finance.Fund", b =>
+                {
+                    b.HasOne("Htn.Domain.Events.Event", null)
+                        .WithMany()
+                        .HasForeignKey("EventId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_funds_events_event_id");
+                });
+
+            modelBuilder.Entity("Htn.Domain.Finance.LedgerEntry", b =>
+                {
+                    b.HasOne("Htn.Domain.Finance.LedgerCategory", null)
+                        .WithMany()
+                        .HasForeignKey("CategoryId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_ledger_entries_ledger_categories_category_id");
+
+                    b.HasOne("Htn.Domain.Finance.LedgerEntry", null)
+                        .WithMany()
+                        .HasForeignKey("ContraOfEntryId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_ledger_entries_ledger_entries_contra_of_entry_id");
+
+                    b.HasOne("Htn.Domain.Finance.Fund", null)
+                        .WithMany()
+                        .HasForeignKey("FundId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_ledger_entries_funds_fund_id");
+
+                    b.HasOne("Htn.Domain.Finance.MonthClose", null)
+                        .WithMany()
+                        .HasForeignKey("MonthCloseId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_ledger_entries_month_closes_month_close_id");
+
+                    b.HasOne("Htn.Domain.Settings.PaymentAccount", null)
+                        .WithMany()
+                        .HasForeignKey("PaymentAccountId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_ledger_entries_payment_accounts_payment_account_id");
+
+                    b.HasOne("Htn.Domain.Files.StoredFile", null)
+                        .WithMany()
+                        .HasForeignKey("ReceiptFileId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_ledger_entries_stored_files_receipt_file_id");
                 });
 
             modelBuilder.Entity("Htn.Domain.Organization.PersonHistory", b =>

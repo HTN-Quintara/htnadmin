@@ -30,6 +30,7 @@ public sealed class MeService(HtnDbContext db, IAuthorizationService authorizati
             user.Email ?? "",
             person?.Level.ToString(),
             user.IsCfo,
+            user.IsFinanceAssistant,
             user.TwoFactorEnabled,
             TwoFactorRequired: isBoard && settings.CurrentValue.RequireBoard2fa && !user.TwoFactorEnabled,
             granted,

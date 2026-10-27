@@ -3,6 +3,7 @@ using Htn.Domain.CheckIn;
 using Htn.Domain.Committees;
 using Htn.Domain.Events;
 using Htn.Domain.Files;
+using Htn.Domain.Finance;
 using Htn.Domain.Organization;
 using Htn.Domain.Outbox;
 using Htn.Domain.Registrations;
@@ -45,6 +46,15 @@ public sealed class HtnDbContext(DbContextOptions<HtnDbContext> options)
     public DbSet<TaskAttachment> TaskAttachments => Set<TaskAttachment>();
     public DbSet<TaskActivity> TaskActivities => Set<TaskActivity>();
     public DbSet<PointsAward> PointsAwards => Set<PointsAward>();
+    public DbSet<Fund> Funds => Set<Fund>();
+    public DbSet<LedgerCategory> LedgerCategories => Set<LedgerCategory>();
+    public DbSet<LedgerEntry> LedgerEntries => Set<LedgerEntry>();
+    public DbSet<MonthClose> MonthCloses => Set<MonthClose>();
+    public DbSet<AccountReconciliation> AccountReconciliations => Set<AccountReconciliation>();
+    public DbSet<EventBudget> EventBudgets => Set<EventBudget>();
+    public DbSet<EventBudgetVersion> EventBudgetVersions => Set<EventBudgetVersion>();
+    public DbSet<EventBudgetLine> EventBudgetLines => Set<EventBudgetLine>();
+    public DbSet<ExpenseRequest> ExpenseRequests => Set<ExpenseRequest>();
     public DbSet<AuditEntry> AuditEntries => Set<AuditEntry>();
     public DbSet<OutboxMessage> Outbox => Set<OutboxMessage>();
     public DbSet<AccountToken> AccountTokens => Set<AccountToken>();
@@ -86,9 +96,19 @@ public sealed class HtnDbContext(DbContextOptions<HtnDbContext> options)
             if (entry.State is not (EntityState.Modified or EntityState.Deleted)) continue;
             if (entry.Entity is AuditEntry or Domain.Organization.PersonHistory or PaymentProof or CheckInScan or TaskActivity)
                 throw new InvalidOperationException($"{entry.Entity.GetType().Name} is append-only.");
+            // A saved budget version is frozen: the next save is a new version, which is the whole audit trail.
+            if (entry.Entity is EventBudgetVersion or EventBudgetLine)
+                throw new InvalidOperationException("A budget version is never edited: save a new version instead.");
             // Points are append-only like finance: a reversal stamps the row (allowed), nothing is ever deleted.
             if (entry.State == EntityState.Deleted && entry.Entity is PointsAward)
                 throw new InvalidOperationException("Points awards are reversed with a reason, never deleted.");
+            // Finance is append-only: approving, voiding, superseding and reopening stamp the row.
+            if (entry.State == EntityState.Deleted && entry.Entity is LedgerEntry)
+                throw new InvalidOperationException("Ledger entries are voided with a reason, never deleted.");
+            if (entry.State == EntityState.Deleted
+                && entry.Entity is Fund or LedgerCategory or MonthClose or AccountReconciliation
+                    or EventBudget or ExpenseRequest)
+                throw new InvalidOperationException($"{entry.Entity.GetType().Name} rows are never deleted.");
             if (entry.State == EntityState.Deleted && entry.Entity is Person)
                 throw new InvalidOperationException("People are deactivated, never deleted.");
             if (entry.State == EntityState.Deleted && entry.Entity is Position or PositionAssignment or PaymentAccount or StoredFile or Domain.Settings.OrgSettings

@@ -31,4 +31,5 @@ public static class EmailCategories
     public const string Ticket = "ticket";
     public const string Registration = "registration";
     public const string TaskMention = "task-mention";
+    public const string Finance = "finance";
 }

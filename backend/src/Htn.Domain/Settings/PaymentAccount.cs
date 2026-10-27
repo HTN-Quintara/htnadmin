@@ -36,12 +36,30 @@ public sealed class PaymentAccount
     public DateTimeOffset? DeactivatedAt { get; private set; }
     public string? DeactivationReason { get; private set; }
 
+    /// <summary>
+    /// What the account held before the ledger started, in PHP (may be negative). The book balance is this plus the
+    /// signed sum of the posted entries on the account, which is what the balancing screen compares to the statement.
+    /// </summary>
+    public decimal OpeningBalance { get; private set; }
+
+    /// <summary>The date <see cref="OpeningBalance"/> was true, for the CFO's own reference.</summary>
+    public DateOnly? OpeningBalanceAsOf { get; private set; }
+
+    /// <summary>
+    /// Whether finance reconciles this account against a statement or a cash count. A month cannot close while an
+    /// active, reconcilable account is unbalanced, so an account that never holds our money is excluded here.
+    /// </summary>
+    public bool IsReconcilable { get; private set; }
+
     public string AccountNumberMasked => Mask(AccountNumber);
 
     public static PaymentAccount Create(
         PaymentAccountKind kind, string label, string? bankName, string accountName, string? accountNumber, DateTimeOffset at)
     {
-        var account = new PaymentAccount { Id = Guid.CreateVersion7(at), IsActive = true, CreatedAt = at };
+        var account = new PaymentAccount
+        {
+            Id = Guid.CreateVersion7(at), IsActive = true, IsReconcilable = true, CreatedAt = at,
+        };
         account.Apply(kind, label, bankName, accountName, accountNumber);
         return account;
     }
@@ -57,6 +75,17 @@ public sealed class PaymentAccount
     {
         if (isDefault) EnsureActive();
         IsDefault = isDefault;
+    }
+
+    /// <summary>The finance side of the account: where its balance started and whether the CFO reconciles it.</summary>
+    public void SetFinanceSetup(decimal openingBalance, DateOnly? asOf, bool isReconcilable)
+    {
+        EnsureActive();
+        if (decimal.Round(openingBalance, 2) != openingBalance)
+            throw new DomainException("Opening balance can have at most 2 decimal places.");
+        OpeningBalance = openingBalance;
+        OpeningBalanceAsOf = asOf;
+        IsReconcilable = isReconcilable;
     }
 
     public void Deactivate(string reason, DateTimeOffset at)

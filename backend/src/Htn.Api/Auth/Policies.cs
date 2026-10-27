@@ -68,6 +68,11 @@ public static class Policies
         // any signed-in staff member may read them (the leaderboard lists only goons and apprentices either way).
         auth.AddPolicy(LeaderboardView, p => p.RequireAuthenticatedUser().RequireRole(Roles.Board, Roles.Goon, Roles.Apprentice));
 
+        // Finance.View is "may know the finance module exists": the board, plus the single finance assistant, who is a
+        // goon and may add ledger entries that stay Pending. Everyone else gets 404 from the finance gate, not 403.
+        auth.AddPolicy(FinanceView, p => p.RequireAuthenticatedUser().RequireAssertion(ctx =>
+            ctx.User.IsInRole(Roles.Board) || ctx.User.HasClaim(HtnClaimTypes.FinanceAssistant, "true")));
+        auth.AddPolicy(FinanceRequest, p => p.RequireAuthenticatedUser().RequireRole(Roles.Board));
         auth.AddPolicy(FinancePost, p => p.RequireAuthenticatedUser().RequireRole(Roles.Board).RequireClaim(HtnClaimTypes.Cfo, "true"));
         auth.AddPolicy(FinanceApprove, p => p.RequireAuthenticatedUser().RequireRole(Roles.Board).RequireClaim(HtnClaimTypes.Cfo, "true"));
 
@@ -86,7 +91,8 @@ public static class Policies
 
         string[] implemented =
         [
-            PeopleView, PeopleManage, SettingsPersonal, EventsView, CheckInScan, FinancePost, FinanceApprove,
+            PeopleView, PeopleManage, SettingsPersonal, EventsView, CheckInScan,
+            FinanceView, FinanceRequest, FinancePost, FinanceApprove,
             CommitteesManageMembers, TasksManage, TasksWork, TasksViewBoard, LeaderboardView,
         ];
         foreach (var name in All.Except(implemented))

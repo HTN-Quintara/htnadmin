@@ -4,7 +4,14 @@ export const Policies = {
   PeopleManage: 'People.Manage',
   SettingsPersonal: 'Settings.Personal',
   SettingsManage: 'Settings.Manage',
+  /** Board, or the finance assistant: "may know the finance module exists". Routes 404 to everyone else. */
   FinanceView: 'Finance.View',
+  /** CFO only: post money in or out, transfer, void, reconcile, close a month, edit a budget, pay a request. */
+  FinancePost: 'Finance.Post',
+  /** CFO only: approve a pending entry, or decide an expense request. */
+  FinanceApprove: 'Finance.Approve',
+  /** Any board member: file an expense request. */
+  FinanceRequest: 'Finance.Request',
   /** Any signed-in user: published events. Drafts stay manager-only on the server. */
   EventsView: 'Events.View',
   EventsManage: 'Events.Manage',

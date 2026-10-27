@@ -39,6 +39,7 @@ public static class AuthRateLimiting
             o.AddPolicy(CheckInRateLimiting.Search, http => CheckInRateLimiting.PerUser(CheckInRateLimiting.Search, http, s => s.CheckInSearchPermitLimit));
             o.AddPolicy(CheckInRateLimiting.Read, http => CheckInRateLimiting.PerUser(CheckInRateLimiting.Read, http, s => s.CheckInReadPermitLimit));
             o.AddPolicy(TaskRateLimiting.Write, http => TaskRateLimiting.PerUser(TaskRateLimiting.Write, http));
+            o.AddPolicy(FinanceRateLimiting.Write, http => TaskRateLimiting.PerUser(FinanceRateLimiting.Write, http));
         });
         return services;
     }
@@ -230,6 +231,16 @@ public static class CheckInRateLimiting
 /// amplifier. Anonymous requests (rejected with 401 later) fall back to a per-IP bucket, exactly like the check-in
 /// desk limiter. Limits come from <c>RateLimiting:TasksWritePermitLimit</c> / <c>:TasksWriteWindowSeconds</c>.
 /// </summary>
+/// <summary>
+/// The write budget for finance. It shares the staff-write limits with <see cref="TaskRateLimiting"/> — the same
+/// people, the same kind of work — but gets its own partition key, so a busy task board cannot throttle the CFO
+/// closing a month.
+/// </summary>
+public static class FinanceRateLimiting
+{
+    public const string Write = "finance-write";
+}
+
 public static class TaskRateLimiting
 {
     public const string Write = "tasks-write";

@@ -56,7 +56,8 @@ public sealed record CheckoutResult(Registration? Registration, CheckoutError Er
 /// IDs under the same lock; the unique index is the backstop, retried with fresh IDs.
 /// </summary>
 public sealed class Checkout(
-    HtnDbContext db, IPublicIdGenerator ids, IAuditLog audit, TimeProvider clock, ILogger<Checkout> logger)
+    HtnDbContext db, IPublicIdGenerator ids, Finance.AutoPost autoPost, IAuditLog audit, TimeProvider clock,
+    ILogger<Checkout> logger)
 {
     private const int MaxAttempts = 3;
 
@@ -164,6 +165,9 @@ public sealed class Checkout(
                 RegistrationAudit.Payment(reg, payment, overCapacity ? overrideReason : null),
                 RegistrationRules.Clean(m?.Reason));
             RegistrationOutbox.QueueTickets(db, reg, now);
+            // A zero total and a comp move no money, so AutoPost posts nothing for them; a manual mark-paid with a
+            // real amount lands in the event fund here, in the same transaction as the payment row.
+            await autoPost.TicketPaymentAsync(reg, payment, now, ct);
         }
         else
         {

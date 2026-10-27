@@ -48,6 +48,7 @@ internal sealed class PaymentAccountConfiguration : IEntityTypeConfiguration<Pay
             t.HasCheckConstraint("ck_payment_accounts_deactivated",
                 "(is_active AND deactivated_at IS NULL AND deactivation_reason IS NULL) OR " +
                 "(NOT is_active AND deactivated_at IS NOT NULL AND deactivation_reason IS NOT NULL)");
+            t.HasCheckConstraint("ck_payment_accounts_opening_balance", "round(opening_balance, 2) = opening_balance");
         });
         b.HasKey(a => a.Id);
         b.Property(a => a.Id).ValueGeneratedNever();
@@ -57,6 +58,7 @@ internal sealed class PaymentAccountConfiguration : IEntityTypeConfiguration<Pay
         b.Property(a => a.AccountName).HasMaxLength(PaymentAccount.AccountNameMaxLength).IsRequired();
         b.Property(a => a.AccountNumber).HasMaxLength(PaymentAccount.AccountNumberMaxLength);
         b.Property(a => a.DeactivationReason).HasMaxLength(PaymentAccount.ReasonMaxLength);
+        b.Property(a => a.IsReconcilable).HasDefaultValue(true);
         b.Ignore(a => a.AccountNumberMasked);
         b.HasIndex(a => a.IsActive);
         // At most one default account.

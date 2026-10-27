@@ -236,7 +236,8 @@ public static class RegistrationsEndpoints
     public const string CompReasonMessage = "Give a reason for marking this as a comp: money is due on it.";
 
     private static async Task<IResult> MarkPaid(
-        Guid eventId, BulkMarkPaidRequest req, HtnDbContext db, IAuditLog audit, ICurrentUser me, TimeProvider clock, CancellationToken ct)
+        Guid eventId, BulkMarkPaidRequest req, HtnDbContext db, Finance.AutoPost autoPost, IAuditLog audit, ICurrentUser me,
+        TimeProvider clock, CancellationToken ct)
     {
         if (await Checkout.PaymentAccountError(db, req.Method, req.PaymentAccountId, ct))
             return Problems.Field("paymentAccountId", "Choose an active account that matches the payment method.", "invalid_payment_account");
@@ -293,6 +294,9 @@ public static class RegistrationsEndpoints
                 RegistrationAudit.Payment(reg, payment, overCapacity.Contains(reg.Id) ? overrideReason : null),
                 compReason);
             RegistrationOutbox.QueueTickets(db, reg, now);
+            // Money in, so it belongs in the ledger: posted in this same transaction, never through the outbox, so a
+            // month can never be closed while a payment is still on its way to the books.
+            await autoPost.TicketPaymentAsync(reg, payment, now, ct);
         }
         await db.SaveChangesAsync(ct);
         await tx.CommitAsync(ct);
@@ -321,7 +325,8 @@ public static class RegistrationsEndpoints
     }
 
     private static async Task<IResult> RevertPayment(
-        Guid eventId, Guid id, ReasonRequest req, HtnDbContext db, IAuditLog audit, ICurrentUser me, TimeProvider clock, CancellationToken ct)
+        Guid eventId, Guid id, ReasonRequest req, HtnDbContext db, Finance.AutoPost autoPost, IAuditLog audit,
+        ICurrentUser me, TimeProvider clock, CancellationToken ct)
     {
         await using var tx = await db.Database.BeginTransactionAsync(ct);
         if (!await EventLock.AcquireAsync(db, eventId, ct)) return TypedResults.NotFound();
@@ -339,6 +344,8 @@ public static class RegistrationsEndpoints
             new { status = RegistrationStatus.Paid, paymentId = payment.Id, payment.Method, payment.Amount },
             new { status = reg.Status, ticketVersions = reg.Attendees.OrderBy(a => a.SortOrder).Select(a => a.TicketVersion).ToList() },
             payment.RevertReason);
+        // Take it back out of the books: voided while the month is open, offset by a contra entry once it is closed.
+        await autoPost.ReversePaymentAsync(payment, req.Reason!, me.Id, now, ct);
         await db.SaveChangesAsync(ct);
         await tx.CommitAsync(ct);
         return TypedResults.Ok(await DetailAsync(db, reg, now, ct));

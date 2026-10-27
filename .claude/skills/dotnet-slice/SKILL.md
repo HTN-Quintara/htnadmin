@@ -32,7 +32,7 @@ backend/tests/Htn.Api.Tests/<Area>/       <Area>EndpointsTests.cs
 5. **Validation:** FluentValidation for each request. Error messages are in plain English for the UI.
 6. **Authorization:** add or extend the policy in `Auth/Policies.cs`, plus a resource handler if it's committee-, event- or pop-up-scoped.
 7. **Audit:** for sensitive changes, call `IAuditLog.Record(actor, action, entityType, entityId, before, after, reason)` in the same transaction.
-8. **Side effects** (emails, auto-posting to the ledger): write an `OutboxMessage` inside the same `SaveChanges`. A background worker sends it, so nothing calls Mailtrap inline.
+8. **Side effects:** an **email** is an `OutboxMessage` written inside the same `SaveChanges`, and a background worker sends it, so nothing calls Mailtrap inline. A **ledger entry** is the opposite: `AutoPost` writes it directly in the caller's transaction (`Features/Finance/AutoPost.cs`), because a balance must never be momentarily wrong and a month must never close over a posting still in flight. Rule of thumb: the outbox is for side effects that *cannot* join the transaction.
 9. **DTOs:** project with `Select` into response records. Strip board-only fields (prices, TIN, bank) for other roles in the projection.
 10. **Tests** (`WebApplicationFactory` + Testcontainers Postgres):
     - the happy path
@@ -61,8 +61,8 @@ public static class RegistrationEndpoints
         var before = reg.Status;
         reg.MarkPaid(me.Id, clock.GetUtcNow());                       // domain rule
         audit.Record(me.Id, "registration.mark_paid", nameof(Registration), reg.Id, before, reg.Status);
-        db.Outbox.Add(OutboxMessage.Email(EmailTemplate.Ticket, reg.Id)); // ticket + QR sent by worker
-        db.Outbox.Add(OutboxMessage.LedgerAutoPost(reg.Id));             // finance auto-post
+        db.Outbox.Add(OutboxProcessor.TicketEmail(...));              // ticket + QR sent by worker
+        await autoPost.TicketPaymentAsync(reg, payment, now, ct);     // ledger entry, in THIS transaction
         await db.SaveChangesAsync(ct);
         return TypedResults.NoContent();
     }

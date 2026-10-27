@@ -5,6 +5,7 @@ using Htn.Api.Features.Auth;
 using Htn.Api.Features.CheckIn;
 using Htn.Api.Features.Committees;
 using Htn.Api.Features.Events;
+using Htn.Api.Features.Finance;
 using Htn.Api.Features.Leaderboard;
 using Htn.Api.Features.Organization;
 using Htn.Api.Features.Registrations;
@@ -52,6 +53,8 @@ builder.WebHost.ConfigureKestrel(o => o.Limits.MaxRequestBodySize = HostingLimit
 builder.Services.AddProblemDetails();
 builder.Services.AddExceptionHandler<DomainExceptionHandler>();
 builder.Services.AddExceptionHandler<ConcurrencyExceptionHandler>();
+// Last: a database guard firing means something got past an endpoint check, so it answers 409 rather than 500.
+builder.Services.AddExceptionHandler<DatabaseGuardExceptionHandler>();
 builder.Services.ConfigureHttpJsonOptions(o => o.SerializerOptions.Converters.Add(new JsonStringEnumConverter()));
 
 // ---- Identity + cookie auth ----
@@ -130,6 +133,8 @@ builder.Services.AddScoped<ICommitteeOpenTasks, CommitteeOpenTasks>();
 builder.Services.AddScoped<MeService>();
 builder.Services.AddScoped<AccountProvisioning>();
 builder.Services.AddScoped<Checkout>();
+// Posts ticket payments, reversals and paid expense requests into the ledger (slice 5).
+builder.Services.AddScoped<AutoPost>();
 builder.Services.AddHealthChecks().AddDbContextCheck<HtnDbContext>("db");
 
 var app = builder.Build();
@@ -168,6 +173,11 @@ app.MapMyTasks();
 app.MapTaskDetail();
 app.MapTaskParts();
 app.MapLeaderboard();
+app.MapFinance();
+app.MapLedger();
+app.MapBalancing();
+app.MapBudgets();
+app.MapExpenseRequests();
 
 var migrate = app.Configuration.GetValue("Database:MigrateOnStartup", app.Environment.IsDevelopment());
 if (migrate)

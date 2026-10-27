@@ -27,6 +27,7 @@ public sealed class OutboxProcessor(
     EmailRenderer renderer,
     RegistrationEmails registrationEmails,
     TaskEmails taskEmails,
+    FinanceEmails financeEmails,
     TimeProvider clock,
     IOptions<AppLinkOptions> links,
     IOptions<AccountTokenOptions> tokenOptions,
@@ -105,6 +106,10 @@ public sealed class OutboxProcessor(
                 return await registrationEmails.CancelledAsync(Payload<RegistrationCancelledEmailPayload>(message));
             case EmailTypes.TaskMention:
                 return await taskEmails.MentionAsync(Payload<TaskMentionEmailPayload>(message));
+            case EmailTypes.ExpenseRequestDecision:
+                return await financeEmails.ExpenseRequestDecisionAsync(Payload<ExpenseRequestDecisionEmailPayload>(message));
+            case EmailTypes.BudgetSaved:
+                return await financeEmails.BudgetSavedAsync(Payload<BudgetSavedEmailPayload>(message));
             case RegistrationEmailTypes.Test:
                 return await registrationEmails.TestAsync(Payload<EventTestEmailPayload>(message));
             default:
@@ -131,6 +136,16 @@ public sealed class OutboxProcessor(
     /// <summary>One @mention in one task comment. Queued only for people who can see that board.</summary>
     public static OutboxMessage TaskMentionEmail(TaskMentionEmailPayload payload, DateTimeOffset at) =>
         OutboxMessage.Create(EmailTypes.TaskMention, JsonSerializer.Serialize(payload, Json), null, at);
+
+    /// <summary>The CFO's decision on one expense request, to the board member who filed it.</summary>
+    public static OutboxMessage ExpenseRequestDecisionEmail(Guid requestId, DateTimeOffset at) =>
+        OutboxMessage.Create(EmailTypes.ExpenseRequestDecision,
+            JsonSerializer.Serialize(new ExpenseRequestDecisionEmailPayload(requestId), Json), null, at);
+
+    /// <summary>One board member's copy of a budget version. Queued one per recipient, like the mention email.</summary>
+    public static OutboxMessage BudgetSavedEmail(Guid eventId, Guid versionId, Guid personId, DateTimeOffset at) =>
+        OutboxMessage.Create(EmailTypes.BudgetSaved,
+            JsonSerializer.Serialize(new BudgetSavedEmailPayload(eventId, versionId, personId), Json), null, at);
 
     public static OutboxMessage InviteEmail(InviteEmailPayload payload, string rawToken, DateTimeOffset at) =>
         OutboxMessage.Create(EmailTypes.Invite, JsonSerializer.Serialize(payload, Json), rawToken, at);

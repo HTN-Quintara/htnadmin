@@ -62,7 +62,7 @@ Volunteers have no login: they are per-event records managed by the board or the
 | `Merch.Sell` (event POS) | ✓ | own committee | if assigned | if assigned |
 | `PopUps.Manage` (create / run pop-up) | ✓ | if committee allowed | — | — |
 | `PopUps.Sell` | ✓ | if committee allowed | if on store team | if on store team |
-| `Finance.View` (ledger, budgets, cashflow) | ✓ | — | — | — |
+| `Finance.View` (may know finance exists) | ✓ | — | finance assistant only | — |
 | `Finance.Post` (money in/out, transfers, void, reconcile, close month, budgets) | **CFO only** | — | finance assistant: add only, stays Pending | — |
 | `Finance.Approve` | **CFO only** | — | — | — |
 | `Finance.Request` (expense requests) | ✓ | — | — | — |
@@ -77,5 +77,13 @@ Volunteers have no login: they are per-event records managed by the board or the
 - **Mutating task and committee routes are rate-limited** per signed-in user (`tasks-write`), and @mention emails are
   metered per author per hour; the overflow is dropped silently and counted in the audit entry.
 - Denials return 403. Integration tests must check at least one denied role for every endpoint group.
-- Finance endpoints also return 404 to non-board users, so the module's existence isn't revealed.
+- Finance endpoints return **404** to anyone who is neither a board member nor the finance assistant, so the module's
+  existence isn't revealed. Inside finance, denials are honest 403s. The ladder is: anonymous 401, plain goon or
+  apprentice 404, finance assistant 200 on the ledger routes and 403 on the rest, board 200 on the reads and 403 on
+  posting, CFO 200 everywhere. The assistant's carve-out is exactly `GET /api/finance/ledger`,
+  `GET /api/finance/ledger/{id}`, `GET /api/finance/ledger/{id}/receipt`, `GET /api/finance/funds`,
+  `GET /api/finance/categories` and `POST /api/finance/ledger` (forced to Pending, whatever the client sends).
+- **Nobody signs off their own work in finance either**: the CFO cannot approve an entry they entered (409
+  `self_approval`), nor decide an expense request they filed. The CFO never needs to file one — holding `Finance.Post`
+  they post the expense directly — so this never deadlocks.
 - Prices, TIN and bank fields are removed from responses for non-board users. Do this at the DTO projection, not in the UI.
