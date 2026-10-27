@@ -37,6 +37,16 @@ const codeMessages: Record<string, string> = {
   not_paid: 'This registration is not paid yet.',
   too_many_uploads: 'Too many uploads for this registration. Reply to the billing email instead.',
   invalid_payment_account: "That payment account doesn't match the payment method.",
+  // Sponsors & partners (frame 13).
+  already_received: "This sponsor's cash was already recorded.",
+  not_received: "This sponsor's cash was not recorded as received.",
+  cash_posted: "This sponsor's cash is in the ledger. Reverse the receipt first.",
+  period_closed_use_finance: "This sponsor's earlier cash sits in a closed month. Book the correction from Finance.",
+  no_cash: 'This sponsor has no cash contribution to record.',
+  not_confirmed: 'Confirm the sponsor first.',
+  unknown_tier: 'That tier no longer exists. Pick another one.',
+  threshold_not_reached: "This partner hasn't reached the threshold yet.",
+  already_tagged: 'That organization is already a partner.',
   // Finance (frames 24-26).
   month_closed: 'This month is closed. Reopen it, or post a correcting entry dated today.',
   month_has_pending: 'Some entries are still waiting for approval. Approve or void them first.',

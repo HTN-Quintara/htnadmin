@@ -72,19 +72,27 @@ public static class StoredFilePurposes
     /// </summary>
     public const string FinanceReceipt = "finance_receipt";
 
+    /// <summary>
+    /// A transparent PNG logo for a sponsor or partner organization. Genuinely public — it appears on the public
+    /// registration page, in emails and on printed materials — so it is downloadable by anyone. PNG only in Phase 6:
+    /// an uploaded SVG is executable XML and would be a stored-XSS risk served inline (Phase 7 adds a sanitiser).
+    /// </summary>
+    public const string SponsorLogo = "sponsor_logo";
+
     public const long EventCoverMaxBytes = 2 * 1024 * 1024;
     public const long PaymentProofMaxBytes = 5 * 1024 * 1024;
     public const long TaskAttachmentMaxBytes = 5 * 1024 * 1024;
     public const long FinanceReceiptMaxBytes = 5 * 1024 * 1024;
+    public const long SponsorLogoMaxBytes = 1024 * 1024;
 
     /// <summary>Largest width or height of a proof image (phone screenshots and camera photos).</summary>
     public const int PaymentProofMaxDimension = 8192;
 
     /// <summary>Purposes that any signed-in user may download through <c>GET /api/files/{id}</c>.</summary>
-    public static readonly IReadOnlyList<string> PublicToMembers = [LogoLight, LogoDark];
+    public static readonly IReadOnlyList<string> PublicToMembers = [LogoLight, LogoDark, SponsorLogo];
 
     /// <summary>Purposes anyone (no sign-in) may download through <c>GET /api/public/files/{id}</c>: the public page and emails.</summary>
-    public static readonly IReadOnlyList<string> PublicToEveryone = [LogoLight, LogoDark, EventCover];
+    public static readonly IReadOnlyList<string> PublicToEveryone = [LogoLight, LogoDark, EventCover, SponsorLogo];
 
     public static long MaxBytesFor(string purpose) => purpose switch
     {
@@ -92,6 +100,7 @@ public static class StoredFilePurposes
         PaymentProof => PaymentProofMaxBytes,
         TaskAttachment => TaskAttachmentMaxBytes,
         FinanceReceipt => FinanceReceiptMaxBytes,
+        SponsorLogo => SponsorLogoMaxBytes,
         _ => StoredFile.MaxBytes,
     };
 }

@@ -1,6 +1,7 @@
 using Htn.Domain.Common;
 using Htn.Domain.Finance;
 using Htn.Domain.Registrations;
+using Htn.Domain.Sponsors;
 using Htn.Infrastructure.Audit;
 using Htn.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
@@ -117,6 +118,76 @@ public sealed class AutoPost(HtnDbContext db, IAuditLog audit)
             after: new { entry.FundId, entry.Amount, entry.EntryDate, source = entry.Source.ToString(), requestId = request.Id });
         return entry;
     }
+
+    /// <summary>
+    /// Posts a sponsor's cash contribution to its event fund under <c>Sponsorship</c>. The caller has already
+    /// recorded the receipt on the sponsor; this writes the matching ledger row in the same transaction. One live
+    /// entry per sponsor forever (the <c>ux_ledger_entries_source</c> index), so a double submit is a no-op.
+    /// </summary>
+    public async Task<LedgerEntry?> SponsorCashAsync(
+        Sponsor sponsor, Guid paymentAccountId, DateOnly receivedOn, string? reference, Guid actorId,
+        DateTimeOffset at, CancellationToken ct)
+    {
+        ArgumentNullException.ThrowIfNull(sponsor);
+        if (sponsor.CashAmount is not { } amount || amount <= 0m) return null;
+        if (await ExistsAsync(LedgerSource.SponsorPayment, sponsor.Id, ct)) return null;
+
+        var fund = await FinanceOps.EventFundAsync(db, sponsor.EventId, at, ct);
+        var entry = LedgerEntry.Posted(
+            new NewLedgerEntry(
+                fund.Id,
+                paymentAccountId,
+                LedgerCategories.SponsorshipId,
+                await PostableDateAsync(receivedOn, ct),
+                LedgerDirection.In,
+                amount,
+                reference,
+                $"Sponsorship · {sponsor.Name}",
+                null,
+                LedgerSource.SponsorPayment,
+                sponsor.Id),
+            actorId,
+            at);
+        db.LedgerEntries.Add(entry);
+        audit.Record(actorId, FinanceAuditActions.LedgerAutoPost, nameof(LedgerEntry), entry.Id.ToString(),
+            after: new { entry.FundId, entry.Amount, entry.EntryDate, source = entry.Source.ToString(), sponsorId = sponsor.Id });
+        return entry;
+    }
+
+    /// <summary>
+    /// Takes a sponsor's posted cash back out: voided in an open month, offset by a contra entry in a closed one.
+    /// Returns the entry and whether it was voided (a void frees the sponsor to record its cash again; a contra does
+    /// not, because the original stays posted and still holds the idempotency slot).
+    /// </summary>
+    public async Task<(LedgerEntry Entry, bool Voided)?> ReverseSponsorCashAsync(
+        Sponsor sponsor, string reason, Guid actorId, DateTimeOffset at, CancellationToken ct)
+    {
+        ArgumentNullException.ThrowIfNull(sponsor);
+        var entry = await db.LedgerEntries
+            .FirstOrDefaultAsync(e => e.Source == LedgerSource.SponsorPayment && e.SourceId == sponsor.Id
+                                      && e.Status != LedgerStatus.Voided, ct);
+        if (entry is null) return null;
+
+        if (entry.MonthCloseId is null)
+        {
+            var before = new { status = entry.Status.ToString() };
+            entry.Void(reason, actorId, at);
+            audit.Record(actorId, FinanceAuditActions.LedgerVoid, nameof(LedgerEntry), entry.Id.ToString(),
+                before, new { status = entry.Status.ToString() }, reason);
+            return (entry, true);
+        }
+
+        var contra = LedgerEntry.Contra(
+            entry, await PostableDateAsync(ManilaTime.ManilaDate(at), ct), reason, actorId, at);
+        db.LedgerEntries.Add(contra);
+        audit.Record(actorId, FinanceAuditActions.LedgerContra, nameof(LedgerEntry), contra.Id.ToString(),
+            after: new { contra.Amount, contra.EntryDate, offsets = entry.Id }, reason: reason);
+        return (contra, false);
+    }
+
+    /// <summary>Whether a live automatic entry already exists for this source row (e.g. a contra left the slot taken).</summary>
+    public Task<bool> HasLiveEntryAsync(LedgerSource source, Guid sourceId, CancellationToken ct) =>
+        ExistsAsync(source, sourceId, ct);
 
     /// <summary>
     /// The date an automatic entry can actually be posted on: the business date it belongs to, or — when the books

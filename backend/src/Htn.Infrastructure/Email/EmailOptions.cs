@@ -62,4 +62,8 @@ public sealed class AppLinkOptions
 
     /// <summary>Public registration page of an event.</summary>
     public string Register(string slug) => $"{PublicBaseUrl.TrimEnd('/')}/r/{Uri.EscapeDataString(slug)}";
+
+    /// <summary>A partner group registration link: the public form with the partner token, which pre-fills the company.</summary>
+    public string PartnerRegister(string slug, string token) =>
+        $"{PublicBaseUrl.TrimEnd('/')}/r/{Uri.EscapeDataString(slug)}?p={Uri.EscapeDataString(token)}";
 }

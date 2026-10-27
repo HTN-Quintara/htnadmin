@@ -132,6 +132,13 @@ export const routes: RouteObject[] = [
                         ],
                       },
                       {
+                        path: 'sponsors',
+                        element: <RequirePolicy policy={Policies.SponsorsManage} />,
+                        children: [
+                          { index: true, lazy: async () => ({ Component: (await import('@/features/sponsors/SponsorsPage')).SponsorsPage }) },
+                        ],
+                      },
+                      {
                         path: 'check-in',
                         element: <RequirePolicy policy={Policies.CheckInScan} />,
                         children: [{ index: true, lazy: async () => ({ Component: (await import('@/features/checkin/CheckInPage')).CheckInPage }) }],

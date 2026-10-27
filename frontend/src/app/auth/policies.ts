@@ -32,6 +32,8 @@ export const Policies = {
   TasksWork: 'Tasks.Work',
   /** Any signed-in user: the points leaderboard. Board members can read it but never appear on it. */
   LeaderboardView: 'Leaderboard.View',
+  /** Board only: sponsors, tiers, partners and their group links. */
+  SponsorsManage: 'Sponsors.Manage',
 } as const
 
 export type Policy = (typeof Policies)[keyof typeof Policies] | (string & {})

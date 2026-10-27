@@ -40,6 +40,7 @@ public static class AuthRateLimiting
             o.AddPolicy(CheckInRateLimiting.Read, http => CheckInRateLimiting.PerUser(CheckInRateLimiting.Read, http, s => s.CheckInReadPermitLimit));
             o.AddPolicy(TaskRateLimiting.Write, http => TaskRateLimiting.PerUser(TaskRateLimiting.Write, http));
             o.AddPolicy(FinanceRateLimiting.Write, http => TaskRateLimiting.PerUser(FinanceRateLimiting.Write, http));
+        o.AddPolicy(SponsorsRateLimiting.Write, http => TaskRateLimiting.PerUser(SponsorsRateLimiting.Write, http));
         });
         return services;
     }
@@ -239,6 +240,11 @@ public static class CheckInRateLimiting
 public static class FinanceRateLimiting
 {
     public const string Write = "finance-write";
+}
+
+public static class SponsorsRateLimiting
+{
+    public const string Write = "sponsors-write";
 }
 
 public static class TaskRateLimiting

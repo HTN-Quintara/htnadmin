@@ -2470,6 +2470,616 @@ namespace Htn.Infrastructure.Data.Migrations
                         });
                 });
 
+            modelBuilder.Entity("Htn.Domain.Sponsors.EventPartner", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedById")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by_id");
+
+                    b.Property<string>("DisplayName")
+                        .IsRequired()
+                        .HasMaxLength(160)
+                        .HasColumnType("character varying(160)")
+                        .HasColumnName("display_name");
+
+                    b.Property<Guid>("EventId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("event_id");
+
+                    b.Property<Guid?>("LogoFileId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("logo_file_id");
+
+                    b.Property<string>("NameKey")
+                        .IsRequired()
+                        .HasMaxLength(160)
+                        .HasColumnType("character varying(160)")
+                        .HasColumnName("name_key");
+
+                    b.Property<string>("OrgType")
+                        .HasMaxLength(80)
+                        .HasColumnType("character varying(80)")
+                        .HasColumnName("org_type");
+
+                    b.Property<DateTimeOffset>("TaggedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("tagged_at");
+
+                    b.Property<Guid?>("TaggedById")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tagged_by_id");
+
+                    b.Property<string>("UntagReason")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("untag_reason");
+
+                    b.Property<DateTimeOffset?>("UntaggedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("untagged_at");
+
+                    b.Property<string>("WebsiteUrl")
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)")
+                        .HasColumnName("website_url");
+
+                    b.HasKey("Id")
+                        .HasName("pk_event_partners");
+
+                    b.HasIndex("LogoFileId")
+                        .HasDatabaseName("ix_event_partners_logo_file_id");
+
+                    b.HasIndex("EventId", "NameKey")
+                        .IsUnique()
+                        .HasDatabaseName("ux_event_partners_event_name");
+
+                    b.ToTable("event_partners", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_event_partners_untagged", "(untagged_at IS NULL) = (untag_reason IS NULL) AND (website_url IS NULL OR website_url ~ '^https?://')");
+                        });
+                });
+
+            modelBuilder.Entity("Htn.Domain.Sponsors.EventPartnerSettings", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("CountBasis")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("count_basis");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid>("EventId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("event_id");
+
+                    b.Property<bool>("GroupLinkEnabled")
+                        .HasColumnType("boolean")
+                        .HasColumnName("group_link_enabled");
+
+                    b.Property<uint>("RowVersion")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.Property<int>("Threshold")
+                        .HasColumnType("integer")
+                        .HasColumnName("threshold");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedById")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_event_partner_settings");
+
+                    b.HasIndex("EventId")
+                        .IsUnique()
+                        .HasDatabaseName("ux_event_partner_settings_event");
+
+                    b.ToTable("event_partner_settings", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_event_partner_settings_basis", "count_basis IN ('PaidOnly', 'AllRegistrants', 'CheckedIn')");
+
+                            t.HasCheckConstraint("ck_event_partner_settings_threshold", "threshold BETWEEN 5 AND 1000 AND threshold % 5 = 0");
+                        });
+                });
+
+            modelBuilder.Entity("Htn.Domain.Sponsors.PartnerGroupLink", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedById")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by_id");
+
+                    b.Property<Guid>("EventId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("event_id");
+
+                    b.Property<Guid>("EventPartnerId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("event_partner_id");
+
+                    b.Property<string>("RevokeReason")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("revoke_reason");
+
+                    b.Property<DateTimeOffset?>("RevokedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("revoked_at");
+
+                    b.Property<Guid?>("RevokedById")
+                        .HasColumnType("uuid")
+                        .HasColumnName("revoked_by_id");
+
+                    b.Property<string>("TokenHash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character(64)")
+                        .HasColumnName("token_hash")
+                        .IsFixedLength();
+
+                    b.HasKey("Id")
+                        .HasName("pk_partner_group_links");
+
+                    b.HasIndex("EventId")
+                        .HasDatabaseName("ix_partner_group_links_event_id");
+
+                    b.HasIndex("EventPartnerId")
+                        .IsUnique()
+                        .HasDatabaseName("ux_partner_group_links_open")
+                        .HasFilter("revoked_at IS NULL");
+
+                    b.HasIndex("TokenHash")
+                        .IsUnique()
+                        .HasDatabaseName("ux_partner_group_links_token");
+
+                    b.ToTable("partner_group_links", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_partner_group_links_revoke", "(revoked_at IS NULL) = (revoke_reason IS NULL) AND (revoked_at IS NULL) = (revoked_by_id IS NULL)");
+
+                            t.HasCheckConstraint("ck_partner_group_links_token", "token_hash ~ '^[0-9a-f]{64}$'");
+                        });
+                });
+
+            modelBuilder.Entity("Htn.Domain.Sponsors.Sponsor", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<decimal?>("CashAmount")
+                        .HasPrecision(12, 2)
+                        .HasColumnType("numeric(12,2)")
+                        .HasColumnName("cash_amount");
+
+                    b.Property<Guid?>("CashPaymentAccountId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("cash_payment_account_id");
+
+                    b.Property<DateTimeOffset?>("CashReceivedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("cash_received_at");
+
+                    b.Property<string>("CashReference")
+                        .HasMaxLength(60)
+                        .HasColumnType("character varying(60)")
+                        .HasColumnName("cash_reference");
+
+                    b.Property<int>("CompedSeats")
+                        .HasColumnType("integer")
+                        .HasColumnName("comped_seats");
+
+                    b.Property<DateTimeOffset?>("ConfirmedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("confirmed_at");
+
+                    b.Property<Guid?>("ConfirmedById")
+                        .HasColumnType("uuid")
+                        .HasColumnName("confirmed_by_id");
+
+                    b.Property<string>("ContactEmail")
+                        .HasMaxLength(254)
+                        .HasColumnType("character varying(254)")
+                        .HasColumnName("contact_email");
+
+                    b.Property<string>("ContactMobile")
+                        .HasMaxLength(13)
+                        .HasColumnType("character varying(13)")
+                        .HasColumnName("contact_mobile");
+
+                    b.Property<string>("ContactName")
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)")
+                        .HasColumnName("contact_name");
+
+                    b.Property<string>("ContactRole")
+                        .HasMaxLength(80)
+                        .HasColumnType("character varying(80)")
+                        .HasColumnName("contact_role");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedById")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by_id");
+
+                    b.Property<string>("DisplayName")
+                        .HasMaxLength(160)
+                        .HasColumnType("character varying(160)")
+                        .HasColumnName("display_name");
+
+                    b.Property<Guid>("EventId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("event_id");
+
+                    b.Property<string>("InKindDescription")
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)")
+                        .HasColumnName("in_kind_description");
+
+                    b.Property<int?>("InKindItemCount")
+                        .HasColumnType("integer")
+                        .HasColumnName("in_kind_item_count");
+
+                    b.Property<bool>("IsAnonymous")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_anonymous");
+
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)")
+                        .HasColumnName("kind");
+
+                    b.Property<Guid?>("LogoFileId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("logo_file_id");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(160)
+                        .HasColumnType("character varying(160)")
+                        .HasColumnName("name");
+
+                    b.Property<string>("NameKey")
+                        .IsRequired()
+                        .HasMaxLength(160)
+                        .HasColumnType("character varying(160)")
+                        .HasColumnName("name_key");
+
+                    b.Property<uint>("RowVersion")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("status");
+
+                    b.Property<Guid?>("TierId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tier_id");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedById")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by_id");
+
+                    b.Property<string>("VoidReason")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("void_reason");
+
+                    b.Property<DateTimeOffset?>("VoidedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("voided_at");
+
+                    b.Property<Guid?>("VoidedById")
+                        .HasColumnType("uuid")
+                        .HasColumnName("voided_by_id");
+
+                    b.Property<string>("WebsiteUrl")
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)")
+                        .HasColumnName("website_url");
+
+                    b.HasKey("Id")
+                        .HasName("pk_sponsors");
+
+                    b.HasIndex("CashPaymentAccountId")
+                        .HasDatabaseName("ix_sponsors_cash_payment_account_id");
+
+                    b.HasIndex("LogoFileId")
+                        .HasDatabaseName("ix_sponsors_logo_file_id");
+
+                    b.HasIndex("NameKey")
+                        .HasDatabaseName("ix_sponsors_name_key");
+
+                    b.HasIndex("TierId")
+                        .HasDatabaseName("ix_sponsors_tier_id");
+
+                    b.HasIndex("EventId", "NameKey")
+                        .IsUnique()
+                        .HasDatabaseName("ux_sponsors_event_name")
+                        .HasFilter("voided_at IS NULL");
+
+                    b.HasIndex("EventId", "Status")
+                        .HasDatabaseName("ix_sponsors_event_status");
+
+                    b.ToTable("sponsors", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_sponsors_anonymous", "NOT is_anonymous OR display_name IS NULL");
+
+                            t.HasCheckConstraint("ck_sponsors_cash", "cash_amount IS NULL OR (cash_amount > 0 AND round(cash_amount, 2) = cash_amount)");
+
+                            t.HasCheckConstraint("ck_sponsors_cash_received", "(cash_received_at IS NULL) = (cash_payment_account_id IS NULL) AND (cash_received_at IS NULL OR (cash_amount IS NOT NULL AND status = 'Confirmed'))");
+
+                            t.HasCheckConstraint("ck_sponsors_comped", "comped_seats BETWEEN 0 AND 200");
+
+                            t.HasCheckConstraint("ck_sponsors_confirmed", "(status = 'Confirmed') = (confirmed_at IS NOT NULL) AND (confirmed_at IS NULL) = (confirmed_by_id IS NULL)");
+
+                            t.HasCheckConstraint("ck_sponsors_contribution", "cash_amount IS NOT NULL OR in_kind_description IS NOT NULL");
+
+                            t.HasCheckConstraint("ck_sponsors_credit", "kind = 'Organization' OR is_anonymous OR display_name IS NOT NULL");
+
+                            t.HasCheckConstraint("ck_sponsors_in_kind", "in_kind_item_count IS NULL OR in_kind_description IS NOT NULL");
+
+                            t.HasCheckConstraint("ck_sponsors_kind", "kind IN ('Organization', 'Individual')");
+
+                            t.HasCheckConstraint("ck_sponsors_org_not_anonymous", "kind = 'Individual' OR NOT is_anonymous");
+
+                            t.HasCheckConstraint("ck_sponsors_status", "status IN ('AwaitingContract', 'Confirmed')");
+
+                            t.HasCheckConstraint("ck_sponsors_void", "(voided_at IS NULL) = (void_reason IS NULL) AND (voided_at IS NULL) = (voided_by_id IS NULL) AND (voided_at IS NULL OR cash_received_at IS NULL)");
+
+                            t.HasCheckConstraint("ck_sponsors_website", "website_url IS NULL OR website_url ~ '^https?://'");
+                        });
+                });
+
+            modelBuilder.Entity("Htn.Domain.Sponsors.SponsorCompRegistration", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedById")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by_id");
+
+                    b.Property<Guid>("EventId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("event_id");
+
+                    b.Property<Guid>("RegistrationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("registration_id");
+
+                    b.Property<Guid>("SponsorId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("sponsor_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_sponsor_comp_registrations");
+
+                    b.HasIndex("RegistrationId")
+                        .IsUnique()
+                        .HasDatabaseName("ux_sponsor_comp_registrations_registration");
+
+                    b.HasIndex("SponsorId")
+                        .HasDatabaseName("ix_sponsor_comp_registrations_sponsor");
+
+                    b.ToTable("sponsor_comp_registrations", (string)null);
+                });
+
+            modelBuilder.Entity("Htn.Domain.Sponsors.SponsorPerk", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<DateTimeOffset?>("DeliveredAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("delivered_at");
+
+                    b.Property<Guid?>("DeliveredById")
+                        .HasColumnType("uuid")
+                        .HasColumnName("delivered_by_id");
+
+                    b.Property<Guid>("EventId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("event_id");
+
+                    b.Property<string>("RemoveReason")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("remove_reason");
+
+                    b.Property<DateTimeOffset?>("RemovedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("removed_at");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("integer")
+                        .HasColumnName("sort_order");
+
+                    b.Property<Guid?>("SourceTierId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("source_tier_id");
+
+                    b.Property<Guid>("SponsorId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("sponsor_id");
+
+                    b.Property<string>("Text")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("text");
+
+                    b.HasKey("Id")
+                        .HasName("pk_sponsor_perks");
+
+                    b.HasIndex("SourceTierId")
+                        .HasDatabaseName("ix_sponsor_perks_source_tier_id");
+
+                    b.HasIndex("SponsorId", "SortOrder")
+                        .HasDatabaseName("ix_sponsor_perks_sponsor");
+
+                    b.ToTable("sponsor_perks", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_sponsor_perks_delivered", "(delivered_at IS NULL) = (delivered_by_id IS NULL)");
+
+                            t.HasCheckConstraint("ck_sponsor_perks_removed", "(removed_at IS NULL) = (remove_reason IS NULL)");
+                        });
+                });
+
+            modelBuilder.Entity("Htn.Domain.Sponsors.SponsorTier", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<decimal?>("CashAmount")
+                        .HasPrecision(12, 2)
+                        .HasColumnType("numeric(12,2)")
+                        .HasColumnName("cash_amount");
+
+                    b.Property<string>("Class")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)")
+                        .HasColumnName("class");
+
+                    b.Property<int>("CompedSeats")
+                        .HasColumnType("integer")
+                        .HasColumnName("comped_seats");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedById")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by_id");
+
+                    b.Property<DateTimeOffset?>("DeactivatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("deactivated_at");
+
+                    b.Property<Guid>("EventId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("event_id");
+
+                    b.Property<int?>("InKindItemCount")
+                        .HasColumnType("integer")
+                        .HasColumnName("in_kind_item_count");
+
+                    b.Property<string>("InKindText")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("in_kind_text");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_active");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(80)
+                        .HasColumnType("character varying(80)")
+                        .HasColumnName("name");
+
+                    b.PrimitiveCollection<string[]>("Perks")
+                        .IsRequired()
+                        .HasColumnType("text[]")
+                        .HasColumnName("perks");
+
+                    b.Property<string>("PriceNote")
+                        .HasMaxLength(80)
+                        .HasColumnType("character varying(80)")
+                        .HasColumnName("price_note");
+
+                    b.Property<int>("Slots")
+                        .HasColumnType("integer")
+                        .HasColumnName("slots");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("integer")
+                        .HasColumnName("sort_order");
+
+                    b.HasKey("Id")
+                        .HasName("pk_sponsor_tiers");
+
+                    b.HasIndex("EventId")
+                        .HasDatabaseName("ix_sponsor_tiers_event");
+
+                    b.HasIndex("EventId", "Name")
+                        .IsUnique()
+                        .HasDatabaseName("ux_sponsor_tiers_event_name")
+                        .HasFilter("deactivated_at IS NULL");
+
+                    b.ToTable("sponsor_tiers", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_sponsor_tiers_cash", "cash_amount IS NULL OR (cash_amount > 0 AND round(cash_amount, 2) = cash_amount)");
+
+                            t.HasCheckConstraint("ck_sponsor_tiers_class", "class IN ('Platinum', 'Gold', 'Silver', 'Partner', 'Individual')");
+
+                            t.HasCheckConstraint("ck_sponsor_tiers_comped", "comped_seats BETWEEN 0 AND 200");
+
+                            t.HasCheckConstraint("ck_sponsor_tiers_contribution", "cash_amount IS NOT NULL OR in_kind_text IS NOT NULL");
+
+                            t.HasCheckConstraint("ck_sponsor_tiers_deactivated", "is_active = (deactivated_at IS NULL)");
+
+                            t.HasCheckConstraint("ck_sponsor_tiers_in_kind", "in_kind_item_count IS NULL OR in_kind_text IS NOT NULL");
+
+                            t.HasCheckConstraint("ck_sponsor_tiers_slots", "slots BETWEEN 1 AND 100");
+                        });
+                });
+
             modelBuilder.Entity("Htn.Domain.Tasks.PointsAward", b =>
                 {
                     b.Property<Guid>("Id")
@@ -3807,6 +4417,120 @@ namespace Htn.Infrastructure.Data.Migrations
                         .HasForeignKey("LogoLightFileId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .HasConstraintName("fk_org_settings_stored_files_logo_light_file_id");
+                });
+
+            modelBuilder.Entity("Htn.Domain.Sponsors.EventPartner", b =>
+                {
+                    b.HasOne("Htn.Domain.Events.Event", null)
+                        .WithMany()
+                        .HasForeignKey("EventId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_event_partners_events_event_id");
+
+                    b.HasOne("Htn.Domain.Files.StoredFile", null)
+                        .WithMany()
+                        .HasForeignKey("LogoFileId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_event_partners_stored_files_logo_file_id");
+                });
+
+            modelBuilder.Entity("Htn.Domain.Sponsors.EventPartnerSettings", b =>
+                {
+                    b.HasOne("Htn.Domain.Events.Event", null)
+                        .WithMany()
+                        .HasForeignKey("EventId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_event_partner_settings_events_event_id");
+                });
+
+            modelBuilder.Entity("Htn.Domain.Sponsors.PartnerGroupLink", b =>
+                {
+                    b.HasOne("Htn.Domain.Events.Event", null)
+                        .WithMany()
+                        .HasForeignKey("EventId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_partner_group_links_events_event_id");
+
+                    b.HasOne("Htn.Domain.Sponsors.EventPartner", null)
+                        .WithMany()
+                        .HasForeignKey("EventPartnerId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_partner_group_links_event_partners_event_partner_id");
+                });
+
+            modelBuilder.Entity("Htn.Domain.Sponsors.Sponsor", b =>
+                {
+                    b.HasOne("Htn.Domain.Settings.PaymentAccount", null)
+                        .WithMany()
+                        .HasForeignKey("CashPaymentAccountId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_sponsors_payment_accounts_cash_payment_account_id");
+
+                    b.HasOne("Htn.Domain.Events.Event", null)
+                        .WithMany()
+                        .HasForeignKey("EventId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_sponsors_events_event_id");
+
+                    b.HasOne("Htn.Domain.Files.StoredFile", null)
+                        .WithMany()
+                        .HasForeignKey("LogoFileId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_sponsors_stored_files_logo_file_id");
+
+                    b.HasOne("Htn.Domain.Sponsors.SponsorTier", null)
+                        .WithMany()
+                        .HasForeignKey("TierId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_sponsors_sponsor_tiers_tier_id");
+                });
+
+            modelBuilder.Entity("Htn.Domain.Sponsors.SponsorCompRegistration", b =>
+                {
+                    b.HasOne("Htn.Domain.Registrations.Registration", null)
+                        .WithMany()
+                        .HasForeignKey("RegistrationId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_sponsor_comp_registrations_registrations_registration_id");
+
+                    b.HasOne("Htn.Domain.Sponsors.Sponsor", null)
+                        .WithMany()
+                        .HasForeignKey("SponsorId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_sponsor_comp_registrations_sponsors_sponsor_id");
+                });
+
+            modelBuilder.Entity("Htn.Domain.Sponsors.SponsorPerk", b =>
+                {
+                    b.HasOne("Htn.Domain.Sponsors.SponsorTier", null)
+                        .WithMany()
+                        .HasForeignKey("SourceTierId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_sponsor_perks_sponsor_tiers_source_tier_id");
+
+                    b.HasOne("Htn.Domain.Sponsors.Sponsor", null)
+                        .WithMany()
+                        .HasForeignKey("SponsorId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_sponsor_perks_sponsors_sponsor_id");
+                });
+
+            modelBuilder.Entity("Htn.Domain.Sponsors.SponsorTier", b =>
+                {
+                    b.HasOne("Htn.Domain.Events.Event", null)
+                        .WithMany()
+                        .HasForeignKey("EventId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_sponsor_tiers_events_event_id");
                 });
 
             modelBuilder.Entity("Htn.Domain.Tasks.PointsAward", b =>

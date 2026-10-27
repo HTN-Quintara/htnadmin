@@ -7,6 +7,7 @@ using Htn.Domain.Finance;
 using Htn.Domain.Organization;
 using Htn.Domain.Outbox;
 using Htn.Domain.Registrations;
+using Htn.Domain.Sponsors;
 using Htn.Domain.Settings;
 using Htn.Domain.Tasks;
 using Htn.Infrastructure.Identity;
@@ -55,6 +56,13 @@ public sealed class HtnDbContext(DbContextOptions<HtnDbContext> options)
     public DbSet<EventBudgetVersion> EventBudgetVersions => Set<EventBudgetVersion>();
     public DbSet<EventBudgetLine> EventBudgetLines => Set<EventBudgetLine>();
     public DbSet<ExpenseRequest> ExpenseRequests => Set<ExpenseRequest>();
+    public DbSet<SponsorTier> SponsorTiers => Set<SponsorTier>();
+    public DbSet<Sponsor> Sponsors => Set<Sponsor>();
+    public DbSet<SponsorPerk> SponsorPerks => Set<SponsorPerk>();
+    public DbSet<SponsorCompRegistration> SponsorCompRegistrations => Set<SponsorCompRegistration>();
+    public DbSet<EventPartnerSettings> EventPartnerSettings => Set<EventPartnerSettings>();
+    public DbSet<EventPartner> EventPartners => Set<EventPartner>();
+    public DbSet<PartnerGroupLink> PartnerGroupLinks => Set<PartnerGroupLink>();
     public DbSet<AuditEntry> AuditEntries => Set<AuditEntry>();
     public DbSet<OutboxMessage> Outbox => Set<OutboxMessage>();
     public DbSet<AccountToken> AccountTokens => Set<AccountToken>();
@@ -108,6 +116,11 @@ public sealed class HtnDbContext(DbContextOptions<HtnDbContext> options)
             if (entry.State == EntityState.Deleted
                 && entry.Entity is Fund or LedgerCategory or MonthClose or AccountReconciliation
                     or EventBudget or ExpenseRequest)
+                throw new InvalidOperationException($"{entry.Entity.GetType().Name} rows are never deleted.");
+            // Sponsors and partners are append-only: deactivate, void, untag or revoke with a reason, never delete.
+            if (entry.State == EntityState.Deleted
+                && entry.Entity is SponsorTier or Sponsor or SponsorPerk or SponsorCompRegistration
+                    or Htn.Domain.Sponsors.EventPartnerSettings or EventPartner or PartnerGroupLink)
                 throw new InvalidOperationException($"{entry.Entity.GetType().Name} rows are never deleted.");
             if (entry.State == EntityState.Deleted && entry.Entity is Person)
                 throw new InvalidOperationException("People are deactivated, never deleted.");

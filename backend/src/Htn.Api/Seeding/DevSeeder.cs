@@ -4,6 +4,7 @@ using Htn.Domain.Events;
 using Htn.Domain.Files;
 using Htn.Domain.Finance;
 using Htn.Domain.Registrations;
+using Htn.Domain.Sponsors;
 using Htn.Domain.Settings;
 using Htn.Api.Features.Tasks;
 using Htn.Domain.Tasks;
@@ -50,6 +51,7 @@ public static class DevSeeder
         await EnsureCommitteesAsync(db, clock, ct);
         await EnsureTasksAsync(db, clock, ct);
         await EnsureFinanceAsync(db, users, sp.GetRequiredService<IFileStorage>(), clock, ct);
+        await EnsureSponsorsAsync(db, clock, ct);
         logger.LogInformation("Development seed data is in place");
     }
 
@@ -354,6 +356,41 @@ public static class DevSeeder
     /// assistant is waiting on, and an expense request. Alex holds the CFO flag so the dev login can post and close,
     /// and Mika is the finance assistant.
     /// </summary>
+    /// <summary>
+    /// A few sponsors and tiers on HTN Con 2026 (frame 13), plus one tagged partner, so the screen has data. Each
+    /// piece is skipped when it already exists.
+    /// </summary>
+    private static async Task EnsureSponsorsAsync(HtnDbContext db, TimeProvider clock, CancellationToken ct)
+    {
+        var now = clock.GetUtcNow();
+        var ev = await db.Events.FirstOrDefaultAsync(e => e.Slug == SampleEventSlug, ct);
+        if (ev is null || await db.SponsorTiers.AnyAsync(t => t.EventId == ev.Id, ct)) return;
+
+        var platinum = SponsorTier.Create(ev.Id, new NewSponsorTier(
+            TierClass.Platinum, "Main Stage Partner", 200000m, "or equivalent", null, null, 1, 6, 10,
+            ["Logo on stage backdrop", "10-min keynote slot", "Booth (3 × 3 m)"]), Guid.Empty, now);
+        var gold = SponsorTier.Create(ev.Id, new NewSponsorTier(
+            TierClass.Gold, "Lanyard & ID", 80000m, null, "400 lanyards", 400, 3, 3, 20,
+            ["Logo on lanyard", "Booth (2 × 2 m)", "Social shout-out"]), Guid.Empty, now);
+        db.SponsorTiers.AddRange(platinum, gold);
+
+        var cloudcorp = Sponsor.Create(ev.Id, new NewSponsor(
+            SponsorKind.Organization, "CloudCorp PH", null, false, "Kai Cruz", "Partnerships", null, null,
+            platinum.Id, 200000m, null, null, 6, "https://cloudcorp.ph"), Guid.Empty, now);
+        cloudcorp.Confirm(Guid.Empty, now);
+        var securebank = Sponsor.Create(ev.Id, new NewSponsor(
+            SponsorKind.Organization, "SecureBank", null, false, "Marco Dy", "CISO", null, null,
+            gold.Id, 80000m, "lanyards", 400, 3, null), Guid.Empty, now);
+        var donor = Sponsor.Create(ev.Id, new NewSponsor(
+            SponsorKind.Individual, "Ramon Villanueva", "Ramon Villanueva", false, null, null, null, null,
+            null, 25000m, null, null, 1, null), Guid.Empty, now);
+        donor.Confirm(Guid.Empty, now);
+        db.Sponsors.AddRange(cloudcorp, securebank, donor);
+
+        db.EventPartners.Add(EventPartner.Tag(ev.Id, "DICT", "Government agency", Guid.Empty, now));
+        await db.SaveChangesAsync(ct);
+    }
+
     private static async Task EnsureFinanceAsync(
         HtnDbContext db, UserManager<AppUser> users, IFileStorage storage, TimeProvider clock, CancellationToken ct)
     {
