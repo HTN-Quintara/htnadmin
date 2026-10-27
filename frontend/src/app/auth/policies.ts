@@ -42,6 +42,8 @@ export const Policies = {
   DirectoryView: 'Directory.View',
   /** Board only: create/edit organizations, contacts and verification actions. */
   DirectoryManage: 'Directory.Manage',
+  /** Board only: invitations per event. Unlike Directory, there is no committee-lead exception. */
+  InvitationsManage: 'Invitations.Manage',
 } as const
 
 export type Policy = (typeof Policies)[keyof typeof Policies] | (string & {})

@@ -50,7 +50,7 @@ const codeMessages: Record<string, string> = {
   voucher_code_exhausted: 'Could not generate a voucher code. Try again.',
   unknown_committee: 'That committee is not part of this event.',
   // Leads (frame 17).
-  invalid_transition: "That move isn't allowed from the lead's current stage.",
+  invalid_transition: "That move isn't allowed from the current stage.",
   lead_closed: 'This lead is closed. Reopen it to edit the details.',
   reason_required: 'Add the speaker\'s email before confirming, so the link can be sent.',
   // Sponsors & partners (frame 13).
@@ -65,6 +65,9 @@ const codeMessages: Record<string, string> = {
   already_tagged: 'That organization is already a partner.',
   // Directory (frame 18).
   already_deactivated: 'This organization is already deactivated.',
+  // Invitations (frame 19).
+  contact_not_verified: "The organization's contact must be verified before sending.",
+  already_sent: 'This invitation has already been sent.',
   // Finance (frames 24-26).
   month_closed: 'This month is closed. Reopen it, or post a correcting entry dated today.',
   month_has_pending: 'Some entries are still waiting for approval. Approve or void them first.',

@@ -103,6 +103,18 @@ public sealed class DirectoryContact
         return snapshot;
     }
 
+    /// <summary>
+    /// An email to this contact bounced (Phase 7B): re-flags it by clearing <see cref="VerifiedAt"/>, so
+    /// <see cref="NeedsCheck"/> is immediately true regardless of the 90-day window — "re-flagging" means treating
+    /// the contact as if it had never been verified. The caller writes the matching <c>DirectoryContactHistory.Bounced</c> row.
+    /// </summary>
+    public void MarkBounced(DateTimeOffset at)
+    {
+        EnsureLive();
+        VerifiedAt = null;
+        UpdatedAt = at;
+    }
+
     public void Void(string reason, Guid actorId, DateTimeOffset at)
     {
         if (IsVoided) throw new DomainException("This contact is already removed.");

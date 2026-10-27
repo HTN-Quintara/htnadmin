@@ -1976,6 +1976,178 @@ namespace Htn.Infrastructure.Data.Migrations
                         });
                 });
 
+            modelBuilder.Entity("Htn.Domain.Invitations.EventInvitation", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid?>("ContactId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("contact_id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedById")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by_id");
+
+                    b.Property<Guid>("DirectoryOrgId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("directory_org_id");
+
+                    b.Property<Guid>("EventId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("event_id");
+
+                    b.Property<DateTimeOffset?>("LastStatusAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("last_status_at");
+
+                    b.Property<string>("LetterBodySnapshot")
+                        .HasMaxLength(8000)
+                        .HasColumnType("character varying(8000)")
+                        .HasColumnName("letter_body_snapshot");
+
+                    b.Property<string>("LetterSubjectSnapshot")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("letter_subject_snapshot");
+
+                    b.Property<string>("RecipientEmail")
+                        .HasMaxLength(254)
+                        .HasColumnType("character varying(254)")
+                        .HasColumnName("recipient_email");
+
+                    b.Property<string>("RecipientName")
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)")
+                        .HasColumnName("recipient_name");
+
+                    b.Property<uint>("RowVersion")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.Property<DateTimeOffset?>("SentAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("sent_at");
+
+                    b.Property<Guid?>("SentById")
+                        .HasColumnType("uuid")
+                        .HasColumnName("sent_by_id");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)")
+                        .HasColumnName("status");
+
+                    b.HasKey("Id")
+                        .HasName("pk_event_invitations");
+
+                    b.HasIndex("DirectoryOrgId")
+                        .HasDatabaseName("ix_event_invitations_directory_org_id");
+
+                    b.HasIndex("EventId")
+                        .HasDatabaseName("ix_event_invitations_event");
+
+                    b.HasIndex("EventId", "DirectoryOrgId")
+                        .IsUnique()
+                        .HasDatabaseName("ux_event_invitations_event_org");
+
+                    b.ToTable("event_invitations", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_event_invitations_sent", "(status = 'NotSent') = (sent_at IS NULL) AND (status = 'NotSent') = (sent_by_id IS NULL) AND (status = 'NotSent') = (contact_id IS NULL) AND (status = 'NotSent') = (letter_subject_snapshot IS NULL) AND (status = 'NotSent') = (letter_body_snapshot IS NULL) AND (status = 'NotSent') = (recipient_email IS NULL) AND (status = 'NotSent') = (recipient_name IS NULL)");
+
+                            t.HasCheckConstraint("ck_event_invitations_status", "status IN ('NotSent', 'Sent', 'Opened', 'Replied', 'Confirmed', 'Declined', 'Bounced')");
+                        });
+                });
+
+            modelBuilder.Entity("Htn.Domain.Invitations.EventInvitationTemplate", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Body")
+                        .IsRequired()
+                        .HasMaxLength(8000)
+                        .HasColumnType("character varying(8000)")
+                        .HasColumnName("body");
+
+                    b.Property<Guid>("EventId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("event_id");
+
+                    b.Property<string>("Subject")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("subject");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedById")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_event_invitation_templates");
+
+                    b.HasIndex("EventId")
+                        .IsUnique()
+                        .HasDatabaseName("ux_event_invitation_templates_event");
+
+                    b.ToTable("event_invitation_templates", (string)null);
+                });
+
+            modelBuilder.Entity("Htn.Domain.Invitations.InvitationEvent", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTimeOffset>("At")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("at");
+
+                    b.Property<Guid?>("ById")
+                        .HasColumnType("uuid")
+                        .HasColumnName("by_id");
+
+                    b.Property<Guid>("InvitationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("invitation_id");
+
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)")
+                        .HasColumnName("kind");
+
+                    b.Property<string>("Note")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("note");
+
+                    b.HasKey("Id")
+                        .HasName("pk_invitation_events");
+
+                    b.HasIndex("InvitationId", "At")
+                        .HasDatabaseName("ix_invitation_events_invitation");
+
+                    b.ToTable("invitation_events", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_invitation_events_kind", "kind IN ('NotSent', 'Sent', 'Opened', 'Replied', 'Confirmed', 'Declined', 'Bounced')");
+                        });
+                });
+
             modelBuilder.Entity("Htn.Domain.Leads.Lead", b =>
                 {
                     b.Property<Guid>("Id")
@@ -5536,6 +5708,43 @@ namespace Htn.Infrastructure.Data.Migrations
                         .HasForeignKey("ReceiptFileId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .HasConstraintName("fk_ledger_entries_stored_files_receipt_file_id");
+                });
+
+            modelBuilder.Entity("Htn.Domain.Invitations.EventInvitation", b =>
+                {
+                    b.HasOne("Htn.Domain.Directory.DirectoryOrg", null)
+                        .WithMany()
+                        .HasForeignKey("DirectoryOrgId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_event_invitations_directory_orgs_directory_org_id");
+
+                    b.HasOne("Htn.Domain.Events.Event", null)
+                        .WithMany()
+                        .HasForeignKey("EventId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_event_invitations_events_event_id");
+                });
+
+            modelBuilder.Entity("Htn.Domain.Invitations.EventInvitationTemplate", b =>
+                {
+                    b.HasOne("Htn.Domain.Events.Event", null)
+                        .WithMany()
+                        .HasForeignKey("EventId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_event_invitation_templates_events_event_id");
+                });
+
+            modelBuilder.Entity("Htn.Domain.Invitations.InvitationEvent", b =>
+                {
+                    b.HasOne("Htn.Domain.Invitations.EventInvitation", null)
+                        .WithMany()
+                        .HasForeignKey("InvitationId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_invitation_events_event_invitations_invitation_id");
                 });
 
             modelBuilder.Entity("Htn.Domain.Leads.Lead", b =>

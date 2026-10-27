@@ -29,6 +29,7 @@ public sealed class OutboxProcessor(
     TaskEmails taskEmails,
     FinanceEmails financeEmails,
     SpeakerEmails speakerEmails,
+    InvitationEmails invitationEmails,
     TimeProvider clock,
     IOptions<AppLinkOptions> links,
     IOptions<AccountTokenOptions> tokenOptions,
@@ -123,6 +124,8 @@ public sealed class OutboxProcessor(
             }
             case EmailTypes.PlusOneVoucher:
                 return await speakerEmails.PlusOneVoucherAsync(Payload<PlusOneVoucherEmailPayload>(message));
+            case EmailTypes.InvitationLetter:
+                return await invitationEmails.InvitationLetterAsync(Payload<InvitationLetterEmailPayload>(message));
             case RegistrationEmailTypes.Test:
                 return await registrationEmails.TestAsync(Payload<EventTestEmailPayload>(message));
             default:
@@ -171,6 +174,10 @@ public sealed class OutboxProcessor(
     /// <summary>A speaker's plus-one voucher, emailed on submit.</summary>
     public static OutboxMessage PlusOneVoucherEmail(Guid plusOneId, DateTimeOffset at) =>
         OutboxMessage.Create(EmailTypes.PlusOneVoucher, JsonSerializer.Serialize(new PlusOneVoucherEmailPayload(plusOneId), Json), null, at);
+
+    /// <summary>The invitation letter, enqueued right after <c>EventInvitation.Send</c> in the same transaction.</summary>
+    public static OutboxMessage InvitationLetterEmail(Guid invitationId, DateTimeOffset at) =>
+        OutboxMessage.Create(EmailTypes.InvitationLetter, JsonSerializer.Serialize(new InvitationLetterEmailPayload(invitationId), Json), null, at);
 
     public static OutboxMessage InviteEmail(InviteEmailPayload payload, string rawToken, DateTimeOffset at) =>
         OutboxMessage.Create(EmailTypes.Invite, JsonSerializer.Serialize(payload, Json), rawToken, at);

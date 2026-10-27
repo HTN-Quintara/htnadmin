@@ -23,6 +23,9 @@ public static class EmailTypes
 
     /// <summary>A speaker's plus-one 50%-off registration voucher (frame 23).</summary>
     public const string PlusOneVoucher = "email.plus_one_voucher";
+
+    /// <summary>An invitation letter, sent to an organization's verified contact (Phase 7B, frame 18-adjacent).</summary>
+    public const string InvitationLetter = "email.invitation_letter";
 }
 
 /// <summary>Payload stored in the outbox. The raw token travels separately in <c>OutboxMessage.Secret</c>.</summary>
@@ -51,6 +54,9 @@ public sealed record SpeakerLinkEmailPayload(Guid LinkId);
 public sealed record SpeakerOtpEmailPayload(Guid LinkId);
 
 public sealed record PlusOneVoucherEmailPayload(Guid PlusOneId);
+
+/// <summary>Only the invitation id travels: the renderer re-reads it and builds the email from the frozen snapshot fields.</summary>
+public sealed record InvitationLetterEmailPayload(Guid InvitationId);
 
 public static class EmailText
 {

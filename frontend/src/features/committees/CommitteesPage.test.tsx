@@ -50,6 +50,7 @@ describe('Committees', () => {
       'Check-in',
       'Sponsors',
       'Leads',
+      'Invitations',
     ])
     expect(within(tabs).getByRole('link', { name: 'Committees' })).toHaveAttribute('aria-current', 'page')
 

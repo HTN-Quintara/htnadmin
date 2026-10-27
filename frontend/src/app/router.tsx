@@ -163,6 +163,13 @@ export const routes: RouteObject[] = [
                         ],
                       },
                       {
+                        path: 'invitations',
+                        element: <RequirePolicy policy={Policies.InvitationsManage} />,
+                        children: [
+                          { index: true, lazy: async () => ({ Component: (await import('@/features/events/invitations/InvitationsPage')).InvitationsPage }) },
+                        ],
+                      },
+                      {
                         path: 'check-in',
                         element: <RequirePolicy policy={Policies.CheckInScan} />,
                         children: [{ index: true, lazy: async () => ({ Component: (await import('@/features/checkin/CheckInPage')).CheckInPage }) }],

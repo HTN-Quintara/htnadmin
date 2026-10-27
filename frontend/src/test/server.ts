@@ -37,6 +37,7 @@ export const boardMe: Me = {
     'Speakers.Manage',
     'Directory.View',
     'Directory.Manage',
+    'Invitations.Manage',
   ],
   preferences: { mode: 'system', textSize: 'default', density: 'comfortable' },
 }

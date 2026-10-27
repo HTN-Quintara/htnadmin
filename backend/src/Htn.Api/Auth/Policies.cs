@@ -98,6 +98,10 @@ public static class Policies
             .AddRequirements(new CommitteeScopedRequirement(CommitteeAccess.ProgramsManage)));
 
         // Directory.Manage (Phase 7A): board only, like Sponsors.Manage and Leads.Manage.
+        // Invitations.Manage (Phase 7B): board only, like Directory.Manage and Sponsors.Manage — there is no lead
+        // carve-out for this one.
+        auth.AddPolicy(InvitationsManage, p => p.RequireAuthenticatedUser().RequireRole(Roles.Board));
+
         auth.AddPolicy(DirectoryManage, p => p.RequireAuthenticatedUser().RequireRole(Roles.Board));
         // Directory.View: board, or any committee lead of any event — a lead chases its own org's contacts, not just
         // its own event's, so this is deliberately not event-scoped (unlike Tasks.ViewBoard). ICommitteeContext
@@ -117,7 +121,7 @@ public static class Policies
             PeopleView, PeopleManage, SettingsPersonal, EventsView, CheckInScan,
             FinanceView, FinanceRequest, FinancePost, FinanceApprove,
             CommitteesManageMembers, TasksManage, TasksWork, TasksViewBoard, LeaderboardView, SpeakersManage,
-            DirectoryManage, DirectoryView,
+            DirectoryManage, DirectoryView, InvitationsManage,
         ];
         foreach (var name in All.Except(implemented))
             auth.AddPolicy(name, p => p.RequireAuthenticatedUser().RequireRole(Roles.Board));

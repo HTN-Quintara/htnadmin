@@ -1,0 +1,21 @@
+<EmailLayout Title="@Subject" Preheader="@($"An invitation from {Brand.OrgName}")" BrandColor="@BrandColor" LogoCid="@LogoCid" Heading="@EventName">
+  @foreach (var paragraph in Paragraphs)
+  {
+    <p style="margin:0 0 16px 0;white-space:pre-wrap;">@paragraph</p>
+  }
+</EmailLayout>
+
+@code {
+    [Parameter, EditorRequired] public string Subject { get; set; } = "";
+    [Parameter, EditorRequired] public string EventName { get; set; } = "";
+
+    /// <summary>
+    /// The merged letter body, split on blank lines into paragraphs by the caller. Each paragraph is rendered with
+    /// <c>@@paragraph</c>, which Razor HTML-encodes — admin-entered template text and directory data (an org or
+    /// holder name) can never inject markup into the letter.
+    /// </summary>
+    [Parameter, EditorRequired] public IReadOnlyList<string> Paragraphs { get; set; } = [];
+
+    [Parameter] public string BrandColor { get; set; } = Brand.Color;
+    [Parameter] public string? LogoCid { get; set; }
+}

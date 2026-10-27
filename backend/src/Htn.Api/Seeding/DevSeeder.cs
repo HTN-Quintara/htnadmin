@@ -4,6 +4,7 @@ using Htn.Domain.Directory;
 using Htn.Domain.Events;
 using Htn.Domain.Files;
 using Htn.Domain.Finance;
+using Htn.Domain.Invitations;
 using Htn.Domain.Registrations;
 using Htn.Domain.Agenda;
 using Htn.Domain.Leads;
@@ -58,6 +59,7 @@ public static class DevSeeder
         await EnsureSponsorsAsync(db, clock, ct);
         await EnsureLeadsAsync(db, clock, ct);
         await EnsureDirectoryAsync(db, clock, ct);
+        await EnsureInvitationsAsync(db, clock, ct);
         await EnsureAgendaAsync(db, clock, ct);
         await EnsureSpeakerTravelModeAsync(db, clock, ct);
         logger.LogInformation("Development seed data is in place");
@@ -459,6 +461,46 @@ public static class DevSeeder
         db.DirectoryContactHistory.Add(DirectoryContactHistory.StillCorrect(dict.Id, dictContact.Id, Guid.Empty, now.AddDays(-2)));
         db.DirectoryContactHistory.Add(DirectoryContactHistory.StillCorrect(cloudcorp.Id, cloudcorpContact.Id, Guid.Empty, now.AddDays(-5)));
         db.DirectoryContactHistory.Add(DirectoryContactHistory.StillCorrect(university.Id, universityContact.Id, Guid.Empty, now.AddDays(-120)));
+        await db.SaveChangesAsync(ct);
+    }
+
+    /// <summary>
+    /// Phase 7B: a letter template on HTN Con 2026, plus one <c>NotSent</c> pick (the stale UP Diliman org, so the
+    /// "verify first" affordance has something to show) and one already <c>Sent</c> (to DICT's verified contact).
+    /// </summary>
+    private static async Task EnsureInvitationsAsync(HtnDbContext db, TimeProvider clock, CancellationToken ct)
+    {
+        var now = clock.GetUtcNow();
+        var ev = await db.Events.FirstOrDefaultAsync(e => e.Slug == SampleEventSlug, ct);
+        if (ev is null || await db.EventInvitations.AnyAsync(i => i.EventId == ev.Id, ct)) return;
+
+        var dict = await db.DirectoryOrgs.FirstOrDefaultAsync(o => o.Name.StartsWith("Department of Information"), ct);
+        var university = await db.DirectoryOrgs.FirstOrDefaultAsync(o => o.Name.Contains("Diliman"), ct);
+        if (dict is null || university is null) return;
+
+        var template = EventInvitationTemplate.Create(ev.Id,
+            new NewEventInvitationTemplate(
+                "Invitation to HTN Con 2026 on [date]",
+                "Dear [addressee.salutation] [addressee.name],\n\n" +
+                "On behalf of HackTheNorth.PH, we are honored to invite your organization, represented by you as " +
+                "[addressee.position], to HTN Con 2026 on [date].\n\n" +
+                "We look forward to your confirmation."),
+            Guid.Empty, now);
+        db.EventInvitationTemplates.Add(template);
+
+        // NotSent: UP Diliman is picked but its contact is stale, so this one needs a check before it can be sent.
+        var pending = EventInvitation.Create(ev.Id, university.Id, Guid.Empty, now);
+        db.EventInvitations.Add(pending);
+
+        // Sent: DICT's contact was verified, so the letter already went out.
+        var dictContact = await db.DirectoryContacts.FirstAsync(c => c.OrgId == dict.Id && c.IsPrimary, ct);
+        var addressee = new InvitationAddressee(dictContact.HolderName, dictContact.Position, dict.AddresseeSalutation);
+        var merged = InvitationMerge.Merge(template.Subject, template.Body, addressee, ev.StartsAt);
+        var sent = EventInvitation.Create(ev.Id, dict.Id, Guid.Empty, now.AddDays(-1));
+        sent.Send(dictContact.Id, dictContact.Email, dictContact.HolderName, merged.Subject, merged.Body, contactIsVerified: true, Guid.Empty, now.AddDays(-1));
+        db.EventInvitations.Add(sent);
+        db.InvitationEvents.Add(InvitationEvent.Create(sent.Id, InvitationStatus.Sent, null, now.AddDays(-1)));
+
         await db.SaveChangesAsync(ct);
     }
 

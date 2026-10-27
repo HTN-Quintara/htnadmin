@@ -5,6 +5,7 @@ using Htn.Domain.Directory;
 using Htn.Domain.Events;
 using Htn.Domain.Files;
 using Htn.Domain.Finance;
+using Htn.Domain.Invitations;
 using Htn.Domain.Organization;
 using Htn.Domain.Outbox;
 using Htn.Domain.Registrations;
@@ -80,6 +81,9 @@ public sealed class HtnDbContext(DbContextOptions<HtnDbContext> options)
     public DbSet<DirectoryOrg> DirectoryOrgs => Set<DirectoryOrg>();
     public DbSet<DirectoryContact> DirectoryContacts => Set<DirectoryContact>();
     public DbSet<DirectoryContactHistory> DirectoryContactHistory => Set<DirectoryContactHistory>();
+    public DbSet<EventInvitation> EventInvitations => Set<EventInvitation>();
+    public DbSet<InvitationEvent> InvitationEvents => Set<InvitationEvent>();
+    public DbSet<EventInvitationTemplate> EventInvitationTemplates => Set<EventInvitationTemplate>();
     public DbSet<AuditEntry> AuditEntries => Set<AuditEntry>();
     public DbSet<OutboxMessage> Outbox => Set<OutboxMessage>();
     public DbSet<AccountToken> AccountTokens => Set<AccountToken>();
@@ -158,6 +162,12 @@ public sealed class HtnDbContext(DbContextOptions<HtnDbContext> options)
                 throw new InvalidOperationException($"{entry.Entity.GetType().Name} rows are never deleted.");
             if (entry.State is EntityState.Modified or EntityState.Deleted && entry.Entity is DirectoryContactHistory)
                 throw new InvalidOperationException("DirectoryContactHistory is append-only.");
+            // An invitation may still be hard-deleted while NotSent (undoing a pick-list mistake); once sent, every
+            // send is logged and the row is permanent. InvitationEvent is fully append-only, like DirectoryContactHistory.
+            if (entry.State == EntityState.Deleted && entry.Entity is EventInvitation inv && inv.Status != InvitationStatus.NotSent)
+                throw new InvalidOperationException("A sent invitation is never deleted.");
+            if (entry.State is EntityState.Modified or EntityState.Deleted && entry.Entity is InvitationEvent)
+                throw new InvalidOperationException("InvitationEvent is append-only.");
             if (entry.State == EntityState.Deleted && entry.Entity is Position or PositionAssignment or PaymentAccount or StoredFile or Domain.Settings.OrgSettings
                     or Event or TicketType or Voucher or Registration or Attendee or Payment or PaymentProof
                     or Committee or CommitteeMember or EventVolunteer
