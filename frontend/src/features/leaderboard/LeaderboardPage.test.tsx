@@ -81,7 +81,7 @@ describe('Leaderboard', () => {
   it('keeps the scope in the URL and refetches when it changes', async () => {
     signInAs(boardMe)
     const calls = handleLeaderboard((url) =>
-      url.searchParams.get('scope') === 'alltime' ? leaderboard({ scope: 'alltime', scopeLabel: 'All time' }) : leaderboard(),
+      url.searchParams.get('scope') === 'alltime' ? leaderboard({ scope: 'AllTime', scopeLabel: 'All time' }) : leaderboard(),
     )
     const { user, router } = renderLeaderboard()
     await findTable()
@@ -112,7 +112,7 @@ describe('Leaderboard', () => {
     signInAs(boardMe)
     const calls = handleLeaderboard((url) => {
       const eventId = url.searchParams.get('eventId')
-      return eventId ? leaderboard({ scope: 'event', scopeLabel: 'HTN Con 2026', eventId }) : leaderboard()
+      return eventId ? leaderboard({ scope: 'Event', scopeLabel: 'HTN Con 2026', eventId }) : leaderboard()
     })
     const { user, router } = renderLeaderboard()
     await findTable()
@@ -132,7 +132,7 @@ describe('Leaderboard', () => {
 
   it('opens a shared event link with the event already picked', async () => {
     signInAs(boardMe)
-    const calls = handleLeaderboard(() => leaderboard({ scope: 'event', scopeLabel: 'HTN Summit 2025', eventId: 'e2' }))
+    const calls = handleLeaderboard(() => leaderboard({ scope: 'Event', scopeLabel: 'HTN Summit 2025', eventId: 'e2' }))
     renderLeaderboard('/leaderboard?scope=event&eventId=e2')
 
     await findTable()

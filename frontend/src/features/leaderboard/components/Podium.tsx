@@ -20,7 +20,7 @@ export function Podium({ rows }: { rows: LeaderboardRow[] }) {
   const top = rows.slice(0, MEDALS.length)
   return (
     <section aria-label="Top three" className="w-full self-center">
-      <ol className="grid max-w-[880px] grid-cols-3 items-end gap-2 sm:gap-4">
+      <ol className="mx-auto grid max-w-[880px] grid-cols-3 items-end gap-2 sm:gap-4">
         {top.map((row, i) => {
           const medal = MEDALS[i]
           return (

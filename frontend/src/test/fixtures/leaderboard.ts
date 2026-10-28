@@ -30,8 +30,9 @@ export const leaderboardRows = () => [
   leaderboardRow({ rank: 8, personId: 'p9', name: 'Marco Yu', initials: 'MY', level: 'Apprentice', committees: 'Programs', tasksDone: 12, asLead: 1, asCollab: 4, asAssistant: 7, points: 156 }),
 ]
 
+/** Shaped exactly like the real API response: `scope`/`level` are the C# enum member names, PascalCase. */
 export const leaderboard = (over: Json = {}) => ({
-  scope: 'quarter',
+  scope: 'Quarter',
   scopeLabel: 'This quarter',
   eventId: null,
   committeeId: null,

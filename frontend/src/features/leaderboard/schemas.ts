@@ -6,6 +6,16 @@ export const LEADERBOARD_SCOPES = ['event', 'quarter', 'alltime'] as const
 export const leaderboardScopeSchema = z.enum(LEADERBOARD_SCOPES)
 export type LeaderboardScope = (typeof LEADERBOARD_SCOPES)[number]
 
+/**
+ * The server's `JsonStringEnumConverter` serializes `LeaderboardScope` by its C# member name
+ * ("Event"/"Quarter"/"AllTime"), not the lowercase values this app's query string and UI state use.
+ * Only the response needs translating; the `?scope=` request param is matched case-insensitively
+ * server-side, so sending the lowercase value works unchanged.
+ */
+const apiLeaderboardScopeSchema = z.enum(['Event', 'Quarter', 'AllTime']).transform(
+  (s): LeaderboardScope => ({ Event: 'event', Quarter: 'quarter', AllTime: 'alltime' } as const)[s],
+)
+
 /** Segment labels from the canvas (frame 14). The event segment shows the event's name instead. */
 export const SCOPE_LABELS: Record<LeaderboardScope, string> = {
   event: 'By event',
@@ -41,7 +51,7 @@ const namedSchema = z.object({ id: z.string(), name: z.string() })
 export type NamedOption = z.infer<typeof namedSchema>
 
 export const leaderboardSchema = z.object({
-  scope: leaderboardScopeSchema,
+  scope: apiLeaderboardScopeSchema,
   scopeLabel: z.string(),
   eventId: z.string().nullish(),
   committeeId: z.string().nullish(),
