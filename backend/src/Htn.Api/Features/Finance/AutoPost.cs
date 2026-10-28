@@ -1,6 +1,7 @@
 using Htn.Domain.Common;
 using Htn.Domain.Finance;
 using Htn.Domain.Merch;
+using Htn.Domain.Organization;
 using Htn.Domain.Registrations;
 using Htn.Domain.Sponsors;
 using Htn.Infrastructure.Audit;
@@ -217,6 +218,45 @@ public sealed class AutoPost(HtnDbContext db, IAuditLog audit)
         db.LedgerEntries.Add(entry);
         audit.Record(actorId, FinanceAuditActions.LedgerAutoPost, nameof(LedgerEntry), entry.Id.ToString(),
             after: new { entry.FundId, entry.Amount, entry.EntryDate, source = entry.Source.ToString(), saleId = sale.Id });
+        return entry;
+    }
+
+    /// <summary>
+    /// Posts a membership fee to the event it was paid at, if any, else the Organization fund (the People page's
+    /// "Paid now" path, which isn't tied to a POS sale) — under <c>Membership dues</c>
+    /// (<see cref="LedgerCategories.MembershipDuesId"/>). Called in the same transaction as the write that created
+    /// the <see cref="Membership"/> row (the POS membership sale or the manual record), exactly like
+    /// <see cref="MerchSaleAsync"/>: one live entry per membership forever (<c>ux_ledger_entries_source</c>).
+    /// Returns null for a free membership (a zero fee) — nothing moved.
+    /// </summary>
+    public async Task<LedgerEntry?> MembershipPaymentAsync(
+        Membership membership, string personName, Guid actorId, DateTimeOffset at, CancellationToken ct)
+    {
+        ArgumentNullException.ThrowIfNull(membership);
+        if (membership.FeePaid <= 0m) return null;
+        if (await ExistsAsync(LedgerSource.MembershipPayment, membership.Id, ct)) return null;
+
+        var fund = membership.EventId is { } eventId
+            ? await FinanceOps.EventFundAsync(db, eventId, at, ct)
+            : await FinanceOps.OrganizationFundAsync(db, ct);
+        var entry = LedgerEntry.Posted(
+            new NewLedgerEntry(
+                fund.Id,
+                null,
+                LedgerCategories.MembershipDuesId,
+                await PostableDateAsync(ManilaTime.ManilaDate(at), ct),
+                LedgerDirection.In,
+                membership.FeePaid,
+                null,
+                $"Membership dues {membership.MembershipYear} · {personName}",
+                null,
+                LedgerSource.MembershipPayment,
+                membership.Id),
+            actorId,
+            at);
+        db.LedgerEntries.Add(entry);
+        audit.Record(actorId, FinanceAuditActions.LedgerAutoPost, nameof(LedgerEntry), entry.Id.ToString(),
+            after: new { entry.FundId, entry.Amount, entry.EntryDate, source = entry.Source.ToString(), membershipId = membership.Id });
         return entry;
     }
 

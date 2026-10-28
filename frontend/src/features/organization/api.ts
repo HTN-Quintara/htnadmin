@@ -2,6 +2,7 @@ import { keepPreviousData, useMutation, useQueries, useQuery, useQueryClient } f
 import { z } from 'zod'
 import { api, apiVoid } from '@/app/api'
 import {
+  eligibleAttendeeHitSchema,
   financeRolesSchema,
   importResultSchema,
   personDetailSchema,
@@ -75,6 +76,16 @@ export function usePersonQuery(id: string | undefined) {
     queryKey: peopleKeys.detail(id ?? ''),
     queryFn: () => api(`/api/people/${encodeURIComponent(id ?? '')}`, personDetailSchema),
     enabled: !!id,
+  })
+}
+
+/** The "Create Member" dialog's attendee-eligibility search (`People.Manage`). */
+export function useEligibleAttendeesQuery(q: string) {
+  const term = q.trim()
+  return useQuery({
+    queryKey: ['people', 'eligible-attendees', term] as const,
+    queryFn: () => api(`/api/people/eligible-attendees?q=${encodeURIComponent(term)}`, z.array(eligibleAttendeeHitSchema)),
+    enabled: term.length >= 3,
   })
 }
 

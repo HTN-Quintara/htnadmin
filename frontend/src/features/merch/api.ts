@@ -136,6 +136,8 @@ export type NewSaleBody = {
   lines: SaleLineBody[]
   method: MerchSaleMethod
   station: string | null
+  /** Phase 8B: the "Membership {year}" POS tile, for this sale's own buyer. */
+  includesMembership: boolean
 }
 
 export function useSellMutation(eventId: string) {

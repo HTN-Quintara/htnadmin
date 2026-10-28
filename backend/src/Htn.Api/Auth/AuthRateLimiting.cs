@@ -40,6 +40,8 @@ public static class AuthRateLimiting
             o.AddPolicy(CheckInRateLimiting.Scan, http => CheckInRateLimiting.PerUser(CheckInRateLimiting.Scan, http, s => s.CheckInPermitLimit));
             o.AddPolicy(CheckInRateLimiting.Search, http => CheckInRateLimiting.PerUser(CheckInRateLimiting.Search, http, s => s.CheckInSearchPermitLimit));
             o.AddPolicy(CheckInRateLimiting.Read, http => CheckInRateLimiting.PerUser(CheckInRateLimiting.Read, http, s => s.CheckInReadPermitLimit));
+            o.AddPolicy(StaffSearchRateLimiting.People, http => CheckInRateLimiting.PerUser(StaffSearchRateLimiting.People, http, s => s.CheckInSearchPermitLimit));
+            o.AddPolicy(StaffSearchRateLimiting.Merch, http => CheckInRateLimiting.PerUser(StaffSearchRateLimiting.Merch, http, s => s.CheckInSearchPermitLimit));
             o.AddPolicy(TaskRateLimiting.Write, http => TaskRateLimiting.PerUser(TaskRateLimiting.Write, http));
             o.AddPolicy(FinanceRateLimiting.Write, http => TaskRateLimiting.PerUser(FinanceRateLimiting.Write, http));
         o.AddPolicy(SponsorsRateLimiting.Write, http => TaskRateLimiting.PerUser(SponsorsRateLimiting.Write, http));
@@ -260,6 +262,21 @@ public static class FinanceRateLimiting
 public static class SponsorsRateLimiting
 {
     public const string Write = "sponsors-write";
+}
+
+/// <summary>
+/// Per signed-in user fixed windows for other staff search endpoints that query People/Attendee rows (so a
+/// compromised or careless People.Manage/Merch.Sell account can't be used to enumerate the roster or attendee list).
+/// Shares the check-in desk's search budget (<c>CheckInSearchPermitLimit</c>/<c>CheckInWindowSeconds</c>) — same
+/// shape of endpoint, same kind of user, no reason for a separate setting.
+/// </summary>
+public static class StaffSearchRateLimiting
+{
+    /// <summary><c>GET /api/people/eligible-attendees</c>.</summary>
+    public const string People = "people-search";
+
+    /// <summary><c>GET /api/events/{id}/pos/buyer-search</c>.</summary>
+    public const string Merch = "merch-search";
 }
 
 public static class TaskRateLimiting

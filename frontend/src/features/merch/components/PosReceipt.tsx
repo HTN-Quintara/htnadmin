@@ -16,6 +16,11 @@ export function PosReceipt({ sale, onNewSale }: { sale: MerchSale; onNewSale: ()
         <p className="text-sm text-gray-600 dark:text-gray-400">
           {formatPeso(sale.total)} from {sale.buyerNameSnapshot} via {paymentMethodLabel(sale.method)}.
         </p>
+        {sale.membershipFeeIncluded ? (
+          <p className="text-sm text-gray-600 dark:text-gray-400">
+            Includes {formatPeso(sale.membershipFeeAmount ?? 0)} membership — {sale.buyerNameSnapshot} is now a Member.
+          </p>
+        ) : null}
       </div>
       <Button size="lg" onClick={onNewSale}>
         New sale

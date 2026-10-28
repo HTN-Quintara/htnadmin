@@ -1,5 +1,7 @@
 using Htn.Api.Auth;
 using Htn.Api.Common;
+using Htn.Api.Features.Finance;
+using Htn.Api.Features.Registrations;
 using Htn.Domain.Common;
 using Htn.Domain.Organization;
 using Htn.Infrastructure.Audit;
@@ -30,6 +32,8 @@ public static class PeopleEndpoints
         g.MapPost("/{id:guid}/resend-invite", ResendInvite).RequireAuthorization(Policies.PeopleManage);
         g.MapPost("/{id:guid}/deactivate", Deactivate).RequireAuthorization(Policies.PeopleManage).ValidateOptional<DeactivatePersonRequest>();
         g.MapPost("/{id:guid}/send-password-reset", SendPasswordReset).RequireAuthorization(Policies.PeopleManage);
+        g.MapGet("/eligible-attendees", EligibleAttendees).RequireAuthorization(Policies.PeopleManage)
+            .RequireRateLimiting(StaffSearchRateLimiting.People);
         return g;
     }
 
@@ -97,29 +101,28 @@ public static class PeopleEndpoints
     }
 
     private static async Task<IResult> Create(
-        CreatePersonRequest req, HtnDbContext db, UserManager<AppUser> users, AccountProvisioning accounts,
+        CreatePersonRequest req, HtnDbContext db, UserManager<AppUser> users, AccountProvisioning accounts, AutoPost autoPost,
         IAuditLog audit, ICurrentUser me, TimeProvider clock, CancellationToken ct)
     {
         var email = Person.NormalizeEmail(req.Email);
         var level = req.Level!.Value;
-        if (await db.People.AnyAsync(p => p.Email == email, ct) || await users.FindByEmailAsync(email) is not null)
-            return Problems.Field("email", DuplicateEmail);
         if (MemberRule.RequiresCheckIn(level) && !await HasCheckedInAsync(db, email, ct))
             return NoCheckIn();
 
         var now = clock.GetUtcNow();
-        var person = Person.Create(req.FirstName, req.MiddleName, req.LastName, email, level, req.Position, now, me.Id);
+        var (person, dupError) = await CreatePersonCoreAsync(
+            db, users, req.FirstName, req.MiddleName, req.LastName, email, level, req.Position, me.Id, now, ct);
+        if (dupError is not null) return dupError;
 
         await using var tx = await db.Database.BeginTransactionAsync(ct);
         try
         {
-            db.People.Add(person);
             await db.SaveChangesAsync(ct);
 
             AppUser? user = null;
             if (level.HasLogin())
             {
-                var login = await accounts.EnsureLoginAsync(person, me.Id, await AccountProvisioning.ActorNameAsync(db, me, ct), ct);
+                var login = await accounts.EnsureLoginAsync(person!, me.Id, await AccountProvisioning.ActorNameAsync(db, me, ct), ct);
                 if (!login.Succeeded)
                 {
                     await tx.RollbackAsync(ct);
@@ -128,10 +131,32 @@ public static class PeopleEndpoints
                 user = login.User;
             }
 
-            audit.Record(me.Id, "person.create", nameof(Person), person.Id.ToString(), before: null, after: new
+            // Phase 8B: the People-page "Create Member" dialog's "Paid now · record payment" fee choice writes
+            // the Membership row and posts the ledger entry inline, exactly like the POS membership sale
+            // (AutoPost.MembershipPaymentAsync, same source/category) — just without an attached event sale.
+            Membership? membership = null;
+            if (level == PersonLevel.Member && req.MembershipFeeChoice == MembershipFeeChoice.PaidNow)
+            {
+                var mainEvent = await MembershipSupport.CurrentMainEventAsync(db, ct);
+                if (mainEvent?.MembershipFee is null || mainEvent.MembershipYear is null)
+                {
+                    await tx.RollbackAsync(ct);
+                    return Problems.Result(StatusCodes.Status409Conflict,
+                        "No main event with a membership fee is configured yet.", code: "no_main_event");
+                }
+                var validUntil = await MembershipSupport.ResolveValidUntilAsync(db, mainEvent.MembershipYear.Value, now, ct);
+                membership = Membership.Create(
+                    person!.Id, mainEvent.MembershipYear.Value, mainEvent.MembershipFee.Value, now, MembershipPaidVia.RecordedManually,
+                    mainEvent.Id, me.Id!.Value, validUntil, now);
+                db.Memberships.Add(membership);
+                await autoPost.MembershipPaymentAsync(membership, person.FullName, me.Id!.Value, now, ct);
+            }
+
+            audit.Record(me.Id, "person.create", nameof(Person), person!.Id.ToString(), before: null, after: new
             {
                 person.FirstName, person.MiddleName, person.LastName, person.Email, person.Level, person.Position,
                 HasLogin = user is not null, UserId = user?.Id,
+                MembershipRecorded = membership is not null, MembershipFeePaid = membership?.FeePaid,
             });
             await db.SaveChangesAsync(ct);
             await tx.CommitAsync(ct);
@@ -142,8 +167,26 @@ public static class PeopleEndpoints
             return Problems.Field("email", DuplicateEmail);
         }
 
-        var dto = await Project(db, db.People.AsNoTracking().Where(p => p.Id == person.Id)).SingleAsync(ct);
+        var dto = await Project(db, db.People.AsNoTracking().Where(p => p.Id == person!.Id)).SingleAsync(ct);
         return TypedResults.Created($"/api/people/{person.Id}", dto);
+    }
+
+    /// <summary>
+    /// The duplicate-email check plus <see cref="Person.Create"/>, shared by <see cref="Create"/> and the POS
+    /// membership sale (<c>MerchEndpoints.Sell</c>, Phase 8B), which promotes an eligible Attendee to a Member
+    /// in-process using this exact rule rather than a second copy of it. Adds the new row to <paramref name="db"/>
+    /// but does not save — the caller controls the transaction.
+    /// </summary>
+    internal static async Task<(Person? Person, IResult? DuplicateError)> CreatePersonCoreAsync(
+        HtnDbContext db, UserManager<AppUser> users, string firstName, string? middleName, string lastName, string email,
+        PersonLevel level, string? position, Guid? actorId, DateTimeOffset now, CancellationToken ct)
+    {
+        var normalized = Person.NormalizeEmail(email);
+        if (await db.People.AnyAsync(p => p.Email == normalized, ct) || await users.FindByEmailAsync(normalized) is not null)
+            return (null, Problems.Field("email", DuplicateEmail));
+        var person = Person.Create(firstName, middleName, lastName, normalized, level, position, now, actorId);
+        db.People.Add(person);
+        return (person, null);
     }
 
     private static async Task<IResult> ResendInvite(
@@ -274,7 +317,26 @@ public static class PeopleEndpoints
             history = rows.Select(r => new PersonHistoryDto(r.At, PersonHistoryKinds.ToApiName(r.Kind), r.FromValue, r.ToValue, r.Reason, r.Actor)).ToList();
         }
 
-        return TypedResults.Ok(new PersonDetailDto(person, positions, history, attendance));
+        MembershipSummaryDto? membership = null;
+        if (full && person.Level == PersonLevel.Member)
+        {
+            var mainEvent = await MembershipSupport.CurrentMainEventAsync(db, ct);
+            if (mainEvent?.MembershipYear is { } year)
+            {
+                var row = await db.Memberships.AsNoTracking()
+                    .Where(m => m.PersonId == id && m.MembershipYear == year)
+                    .Select(m => new { m.FeePaid, m.PaidAt, m.EventId, m.ValidUntil })
+                    .SingleOrDefaultAsync(ct);
+                string? eventName = row?.EventId is { } eid
+                    ? await db.Events.AsNoTracking().Where(e => e.Id == eid).Select(e => e.Name).SingleOrDefaultAsync(ct)
+                    : null;
+                membership = row is null
+                    ? new MembershipSummaryDto(year, false, null, null, mainEvent.Name, null)
+                    : new MembershipSummaryDto(year, true, row.FeePaid, row.PaidAt, eventName, row.ValidUntil);
+            }
+        }
+
+        return TypedResults.Ok(new PersonDetailDto(person, positions, history, attendance, membership));
     }
 
     private static async Task<IResult> Update(
@@ -512,6 +574,47 @@ public static class PeopleEndpoints
     /// <summary>An attendee with this email (case-insensitive) has checked in at any event. <paramref name="email"/> is normalized.</summary>
     internal static Task<bool> HasCheckedInAsync(HtnDbContext db, string email, CancellationToken ct) =>
         db.Attendees.AsNoTracking().AnyAsync(a => a.CheckedInAt != null && a.Email.ToLower() == email, ct);
+
+    /// <summary>
+    /// The People page's "Create Member" dialog "Attendee record" search (Phase 8B): one row per distinct email
+    /// matching <paramref name="q"/> by name or email, across every event (membership eligibility is "checked in at
+    /// at least one event, ever" — not event-scoped), reporting whether that email is eligible to become a Member
+    /// (<see cref="MemberRule"/>'s exact check-in rule) and whether it already is a Person.
+    /// </summary>
+    private static async Task<IResult> EligibleAttendees(string? q, HtnDbContext db, CancellationToken ct)
+    {
+        var term = q?.Trim() ?? "";
+        if (term.Length > 100) term = term[..100];
+        if (term.Length < 3) return TypedResults.Ok(Array.Empty<EligibleAttendeeHitDto>());
+        var pattern = "%" + RegistrationsEndpoints.LikeEscape(term) + "%";
+
+        var hits = await db.Attendees.AsNoTracking()
+            .Where(a =>
+                EF.Functions.ILike(a.FirstName + " " + a.LastName, pattern, @"\")
+                || EF.Functions.ILike(a.FirstName + " " + (a.MiddleName ?? "") + " " + a.LastName, pattern, @"\")
+                || EF.Functions.ILike(a.Email, pattern, @"\"))
+            .OrderBy(a => a.LastName).ThenBy(a => a.FirstName)
+            .Take(100)
+            .ToListAsync(ct);
+        // One row per distinct email (an attendee can have registered at several events) — pick whichever hit
+        // actually checked in, so the eligibility check below doesn't depend on which duplicate happened to load.
+        var matches = hits
+            .GroupBy(a => a.Email.ToLowerInvariant())
+            .Select(g => g.OrderByDescending(a => a.CheckedInAt.HasValue).First())
+            .OrderBy(a => a.LastName).ThenBy(a => a.FirstName)
+            .Take(20)
+            .ToList();
+
+        var results = new List<EligibleAttendeeHitDto>(matches.Count);
+        foreach (var a in matches)
+        {
+            var email = Person.NormalizeEmail(a.Email);
+            var alreadyMember = await db.People.AsNoTracking().AnyAsync(p => p.Email == email, ct);
+            var checkedIn = await HasCheckedInAsync(db, email, ct);
+            results.Add(new EligibleAttendeeHitDto(a.Id, a.FullName, a.Email, checkedIn && !alreadyMember, alreadyMember));
+        }
+        return TypedResults.Ok(results);
+    }
 
     /// <summary>Created by the roster import or the dev seed (history reason), which the Member rule exempts.</summary>
     private static Task<bool> CameInExemptAsync(HtnDbContext db, Guid personId, CancellationToken ct) =>

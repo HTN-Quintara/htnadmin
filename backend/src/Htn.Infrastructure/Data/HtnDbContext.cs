@@ -95,6 +95,7 @@ public sealed class HtnDbContext(DbContextOptions<HtnDbContext> options)
     public DbSet<EventMerchSettings> EventMerchSettings => Set<EventMerchSettings>();
     public DbSet<MerchSale> MerchSales => Set<MerchSale>();
     public DbSet<MerchSaleLine> MerchSaleLines => Set<MerchSaleLine>();
+    public DbSet<Membership> Memberships => Set<Membership>();
     public DbSet<AuditEntry> AuditEntries => Set<AuditEntry>();
     public DbSet<OutboxMessage> Outbox => Set<OutboxMessage>();
     public DbSet<AccountToken> AccountTokens => Set<AccountToken>();
@@ -196,6 +197,9 @@ public sealed class HtnDbContext(DbContextOptions<HtnDbContext> options)
                 throw new InvalidOperationException($"{entry.Entity.GetType().Name} is append-only.");
             if (entry.State == EntityState.Deleted && entry.Entity is Htn.Domain.Merch.EventMerchSettings)
                 throw new InvalidOperationException("EventMerchSettings rows are never deleted.");
+            // A membership row is fully append-only: no update, no delete, ever — a renewal is a new row.
+            if (entry.State is EntityState.Modified or EntityState.Deleted && entry.Entity is Membership)
+                throw new InvalidOperationException("Membership is append-only.");
             if (entry.State == EntityState.Deleted && entry.Entity is Position or PositionAssignment or PaymentAccount or StoredFile or Domain.Settings.OrgSettings
                     or Event or TicketType or Voucher or Registration or Attendee or Payment or PaymentProof
                     or Committee or CommitteeMember or EventVolunteer

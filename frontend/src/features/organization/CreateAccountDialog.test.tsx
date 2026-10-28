@@ -81,6 +81,53 @@ describe('CreateAccountDialog', () => {
     expect(within(dialog).getByText(/No login, roster only/)).toBeInTheDocument()
   })
 
+  it('shows the attendee search and fee choice for Member, and autofills from a pick', async () => {
+    server.use(
+      http.get('/api/people/eligible-attendees', () =>
+        HttpResponse.json([
+          { attendeeId: 'a1', name: 'Jo Attendee', email: 'jo@example.com', eligible: true, alreadyMember: false },
+          { attendeeId: 'a2', name: 'Lee Gomez', email: 'lee@example.com', eligible: false, alreadyMember: false },
+        ]),
+      ),
+    )
+    const { user } = setup()
+    const dialog = await screen.findByRole('dialog', { name: 'Create account' })
+    await user.click(within(dialog).getByRole('radio', { name: 'Member' }))
+
+    expect(within(dialog).getByLabelText('Attendee record')).toBeInTheDocument()
+    expect(within(dialog).getByLabelText('Membership fee')).toBeInTheDocument()
+
+    await user.type(within(dialog).getByLabelText('Attendee record'), 'Jo Att')
+    const hit = await within(dialog).findByRole('button', { name: /Jo Attendee/ })
+    expect(within(hit).getByText('✓ Eligible')).toBeInTheDocument()
+    await user.click(hit)
+
+    expect(within(dialog).getByLabelText('First name')).toHaveValue('Jo')
+    expect(within(dialog).getByLabelText('Last name')).toHaveValue('Attendee')
+    expect(within(dialog).getByLabelText('Email')).toHaveValue('jo@example.com')
+  })
+
+  it('sends membershipFeeChoice only when the level is Member', async () => {
+    let body: unknown
+    server.use(
+      http.post('/api/people', async ({ request }) => {
+        body = await request.json()
+        return HttpResponse.json({ ...created, level: 'Member' }, { status: 201 })
+      }),
+    )
+    const { user } = setup()
+    const dialog = await screen.findByRole('dialog', { name: 'Create account' })
+    await user.type(within(dialog).getByLabelText('First name'), 'Jo')
+    await user.type(within(dialog).getByLabelText('Last name'), 'Attendee')
+    await user.type(within(dialog).getByLabelText('Email'), 'jo@example.com')
+    await user.click(within(dialog).getByRole('radio', { name: 'Member' }))
+    await user.selectOptions(within(dialog).getByLabelText('Membership fee'), 'Paid now · record payment')
+    await user.click(within(dialog).getByRole('button', { name: 'Add to roster' }))
+
+    expect(await screen.findByText('Member added to the roster.')).toBeInTheDocument()
+    expect(body).toEqual({ firstName: 'Jo', lastName: 'Attendee', email: 'jo@example.com', level: 'Member', membershipFeeChoice: 'PaidNow' })
+  })
+
   it('shows server validation errors on the matching field', async () => {
     server.use(
       http.post('/api/people', () =>

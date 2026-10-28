@@ -49,30 +49,47 @@ public sealed class MerchSale
     public DateTimeOffset SoldAt { get; private set; }
 
     /// <summary>
+    /// Whether this sale also included the Membership 2026-style POS tile for its own buyer (Phase 8B). The fee is
+    /// a flat yearly dues amount from <c>Event.MembershipFee</c>, not a <see cref="MerchItem"/> — it is carried as
+    /// its own field rather than bent into a <see cref="MerchSaleLine"/>, and it is <b>never discounted</b> (the
+    /// per-level merch discount applies only to <see cref="Subtotal"/>, which is merch-only).
+    /// </summary>
+    public bool MembershipFeeIncluded { get; private set; }
+
+    public decimal? MembershipFeeAmount { get; private set; }
+
+    /// <summary>
     /// Builds the sale and its lines together so the money math (subtotal, discount, total) is computed exactly
     /// once, from the same snapshot prices the lines carry. The caller has already resolved
     /// <paramref name="discountPct"/> from <see cref="EventMerchSettings"/> and checked stock; this constructor only
-    /// validates shape and arithmetic, never looks anything up.
+    /// validates shape and arithmetic, never looks anything up. <paramref name="membershipFeeAmount"/>, when given,
+    /// is added to <see cref="Total"/> on top of the discounted merch subtotal, undiscounted.
     /// </summary>
     public static (MerchSale Sale, List<MerchSaleLine> Lines) Create(
         Guid eventId, Guid clientRequestId, Guid? buyerPersonId, Guid? buyerAttendeeId, string buyerNameSnapshot, PersonLevel? buyerLevelSnapshot,
         IReadOnlyList<NewMerchSaleLine> lineInputs, int discountPct, MerchSaleMethod method, Guid cashierId, string? station,
-        DateTimeOffset at)
+        bool membershipFeeIncluded, decimal? membershipFeeAmount, DateTimeOffset at)
     {
         if (eventId == Guid.Empty) throw new DomainException("An event is required.");
         if (clientRequestId == Guid.Empty) throw new DomainException("A client request id is required.");
-        if (lineInputs is null || lineInputs.Count == 0) throw new DomainException("A sale needs at least one line.");
+        if ((lineInputs is null || lineInputs.Count == 0) && !membershipFeeIncluded)
+            throw new DomainException("A sale needs at least one line.");
         if (cashierId == Guid.Empty) throw new DomainException("A cashier is required.");
         MerchRules.Defined(method, "payment method");
         if (buyerLevelSnapshot is { } lvl) MerchRules.Defined(lvl, "buyer level");
         var pct = MerchRules.Pct(discountPct, "Discount percent");
         var name = MerchRules.Required(buyerNameSnapshot, "Buyer name", BuyerNameMaxLength);
+        if (membershipFeeIncluded && (membershipFeeAmount is null || membershipFeeAmount < 0))
+            throw new DomainException("A membership fee amount is required when the membership line is included.");
+        if (!membershipFeeIncluded && membershipFeeAmount is not null)
+            throw new DomainException("A membership fee amount is only set when the membership line is included.");
 
         var saleId = Guid.CreateVersion7(at);
-        var lines = lineInputs.Select(l => MerchSaleLine.Create(saleId, l, at)).ToList();
+        var lines = (lineInputs ?? []).Select(l => MerchSaleLine.Create(saleId, l, at)).ToList();
         var subtotal = decimal.Round(lines.Sum(l => l.LineTotal), 2);
         var discountAmount = decimal.Round(subtotal * pct / 100m, 2);
-        var total = subtotal - discountAmount;
+        var membershipFee = membershipFeeIncluded ? decimal.Round(membershipFeeAmount!.Value, 2) : (decimal?)null;
+        var total = subtotal - discountAmount + (membershipFee ?? 0m);
 
         var sale = new MerchSale
         {
@@ -90,6 +107,8 @@ public sealed class MerchSale
             Method = method,
             CashierId = cashierId,
             Station = MerchRules.Optional(station, "Station", StationMaxLength),
+            MembershipFeeIncluded = membershipFeeIncluded,
+            MembershipFeeAmount = membershipFee,
             SoldAt = at,
         };
         return (sale, lines);

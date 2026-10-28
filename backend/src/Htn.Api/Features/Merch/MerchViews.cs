@@ -22,5 +22,6 @@ public static class MerchViews
 
     public static MerchSaleDto Sale(MerchSale s, IReadOnlyList<MerchSaleLineDto> lines) =>
         new(s.Id, s.EventId, s.BuyerPersonId, s.BuyerAttendeeId, s.BuyerNameSnapshot, s.BuyerLevelSnapshot,
-            s.Subtotal, s.DiscountPct, s.DiscountAmount, s.Total, s.Method, s.CashierId, s.Station, s.SoldAt, lines);
+            s.Subtotal, s.DiscountPct, s.DiscountAmount, s.Total, s.Method, s.CashierId, s.Station, s.SoldAt, lines,
+            s.MembershipFeeIncluded, s.MembershipFeeAmount);
 }

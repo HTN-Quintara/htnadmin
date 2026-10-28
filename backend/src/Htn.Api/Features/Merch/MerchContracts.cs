@@ -21,10 +21,16 @@ public sealed record MerchSaleLineRequest(Guid? VariantId, int? Qty);
 /// <see cref="ClientRequestId"/> is a GUID the POS client generates fresh per distinct sale attempt and resends
 /// unchanged on any retry of that same attempt (network retry, double-tap) — the dedup key that makes
 /// <c>POST /pos/sale</c> idempotent.
+/// <para>
+/// <see cref="IncludesMembership"/> (Phase 8B): the design mock's "Membership 2026" POS tile always adds the fee
+/// for whoever this sale's own buyer already is — there is no third-party-gift flow shown — so this is a plain
+/// flag tied to the sale's buyer, not a second, separate <c>membershipForPersonId</c>/<c>membershipForAttendeeId</c>
+/// pair. <see cref="Lines"/> may be empty when this is true (membership-only, no merch in the cart).
+/// </para>
 /// </summary>
 public sealed record MerchSaleRequest(
     Guid? ClientRequestId, Guid? BuyerPersonId, Guid? BuyerAttendeeId, string? BuyerName, IReadOnlyList<MerchSaleLineRequest>? Lines,
-    MerchSaleMethod? Method, string? Station);
+    MerchSaleMethod? Method, string? Station, bool? IncludesMembership);
 
 public sealed record PosScanRequest(string? Payload);
 
@@ -42,7 +48,8 @@ public sealed record MerchSaleLineDto(Guid Id, Guid ItemId, string ItemName, Gui
 public sealed record MerchSaleDto(
     Guid Id, Guid EventId, Guid? BuyerPersonId, Guid? BuyerAttendeeId, string BuyerNameSnapshot, PersonLevel? BuyerLevelSnapshot,
     decimal Subtotal, int DiscountPct, decimal DiscountAmount, decimal Total, MerchSaleMethod Method, Guid CashierId,
-    string? Station, DateTimeOffset SoldAt, IReadOnlyList<MerchSaleLineDto> Lines);
+    string? Station, DateTimeOffset SoldAt, IReadOnlyList<MerchSaleLineDto> Lines,
+    bool MembershipFeeIncluded, decimal? MembershipFeeAmount);
 
 /// <summary>The Merch page's KPI strip. <c>Money</c> and <c>DiscountsGiven</c> are board/manage-only at the DTO
 /// (stripped for a committee lead who can only sell, per the brief's "money/discount config shown only if they can

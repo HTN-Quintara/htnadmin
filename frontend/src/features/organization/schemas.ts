@@ -40,14 +40,37 @@ const optionalText = (max: number) =>
     .transform((v) => (v === '' ? undefined : v))
     .optional()
 
-export const createPersonSchema = z.object({
-  firstName: z.string().trim().min(1, 'Enter a first name.').max(100, 'Use 100 characters or fewer.'),
-  middleName: optionalText(100),
-  lastName: z.string().trim().min(1, 'Enter a last name.').max(100, 'Use 100 characters or fewer.'),
-  email: z.string().trim().pipe(z.email('Enter a valid email address.')),
-  position: optionalText(120),
-  level: levelSchema,
-})
+/** `Htn.Api.Features.Organization.MembershipFeeChoice` — only meaningful when `level === 'Member'`. */
+export const membershipFeeChoiceSchema = z.enum(['PaidAtEvent', 'PaidNow', 'NotPaidYet'])
+export type MembershipFeeChoice = z.infer<typeof membershipFeeChoiceSchema>
+
+export const membershipFeeChoiceLabels: Record<MembershipFeeChoice, string> = {
+  PaidAtEvent: 'Paid at the event (POS)',
+  PaidNow: 'Paid now · record payment',
+  NotPaidYet: 'Not paid yet',
+}
+
+export const createPersonSchema = z
+  .object({
+    firstName: z.string().trim().min(1, 'Enter a first name.').max(100, 'Use 100 characters or fewer.'),
+    middleName: optionalText(100),
+    lastName: z.string().trim().min(1, 'Enter a last name.').max(100, 'Use 100 characters or fewer.'),
+    email: z.string().trim().pipe(z.email('Enter a valid email address.')),
+    position: optionalText(120),
+    level: levelSchema,
+    membershipFeeChoice: membershipFeeChoiceSchema.default('PaidAtEvent'),
+  })
+  .transform((v) => ({
+    firstName: v.firstName,
+    middleName: v.middleName,
+    lastName: v.lastName,
+    email: v.email,
+    position: v.position,
+    level: v.level,
+    // Ignored server-side unless level is Member — omitted from the request body otherwise (JSON.stringify
+    // drops `undefined`), so this is a no-op for every other level, matching the API's own precondition.
+    membershipFeeChoice: v.level === 'Member' ? v.membershipFeeChoice : undefined,
+  }))
 export type CreatePersonInput = z.input<typeof createPersonSchema>
 export type CreatePersonBody = z.output<typeof createPersonSchema>
 
@@ -90,14 +113,40 @@ export type HistoryEntry = z.infer<typeof historyEntrySchema>
 export const attendanceSchema = z.object({ eventId: z.string(), eventName: z.string(), checkedInAt: z.string() })
 export type Attendance = z.infer<typeof attendanceSchema>
 
+/**
+ * The Member-level Membership section (Phase 8B). `paid: false` means `feePaid`/`paidAt`/`validUntil` are
+ * null and `eventName` names where dues can be collected instead.
+ */
+export const membershipSummarySchema = z.object({
+  membershipYear: z.number(),
+  paid: z.boolean(),
+  feePaid: z.number().nullable(),
+  paidAt: z.string().nullable(),
+  eventName: z.string().nullable(),
+  validUntil: z.string().nullable(),
+})
+export type MembershipSummary = z.infer<typeof membershipSummarySchema>
+
 export const personDetailSchema = z.object({
   person: personSchema,
   positions: z.array(z.object({ id: z.string(), title: z.string(), kind: positionKindSchema })),
   history: z.array(historyEntrySchema),
   /** Events this person checked in at (matched by email). Board only; absent for other viewers. */
   attendance: z.array(attendanceSchema).nullish(),
+  /** Board-only, and only for Member-level people — absent (not null-rendered) otherwise. */
+  membership: membershipSummarySchema.nullish(),
 })
 export type PersonDetail = z.infer<typeof personDetailSchema>
+
+/** One hit from the "Create Member" dialog's attendee-eligibility search. */
+export const eligibleAttendeeHitSchema = z.object({
+  attendeeId: z.string(),
+  name: z.string(),
+  email: z.string(),
+  eligible: z.boolean(),
+  alreadyMember: z.boolean(),
+})
+export type EligibleAttendeeHit = z.infer<typeof eligibleAttendeeHitSchema>
 
 /** Rank used to tell promotions from demotions. Board is a separate seat above the path. */
 export const levelRank: Record<Level, number> = { Member: 0, Apprentice: 1, Goon: 2, Board: 3 }

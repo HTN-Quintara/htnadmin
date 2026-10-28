@@ -141,6 +141,12 @@ const codeMessages: Record<string, string> = {
   insufficient_stock: 'Not enough stock left. Reload and try again.',
   unknown_code: "That code isn't a valid ticket for this event.",
   no_buyer: 'Identify the buyer before completing the sale.',
+  // Membership sales (frame 21, Phase 8B).
+  already_a_member: 'This person is already in the organization. Remove membership from the cart.',
+  not_checked_in: "This attendee hasn't checked in at an event yet, so they can't become a Member.",
+  buyer_required_for_membership: 'Pick a buyer who has registered for an event before adding membership.',
+  membership_not_available: "Membership isn't sold at this event.",
+  no_main_event: 'No main event with a membership fee is configured yet.',
 }
 
 /** Message for a known API error code, if any. */

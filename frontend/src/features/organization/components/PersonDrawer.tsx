@@ -9,7 +9,7 @@ import { Drawer } from '@/components/ui/Drawer'
 import { Skeleton } from '@/components/ui/Spinner'
 import { useToast } from '@/components/ui/toast-context'
 import { cn } from '@/lib/cn'
-import { formatDate, initials } from '@/lib/format'
+import { formatDate, formatPeso, initials } from '@/lib/format'
 import { usePersonQuery, useResendInviteMutation, useSendPasswordResetMutation } from '../api'
 import { fullName } from '../format'
 import { isDemotion, levelSchema, nextLevel, type HistoryEntry, type Level, type Person } from '../schemas'
@@ -91,6 +91,7 @@ export function PersonDrawer({ person: listed, onClose }: { person: Person | nul
   const next = nextLevel(person.level)
   const positions = detail.data?.positions ?? []
   const attendance = detail.data?.attendance ?? []
+  const membership = detail.data?.membership
 
   function onResend(p: Person) {
     resend.mutate(p.id, {
@@ -165,6 +166,25 @@ export function PersonDrawer({ person: listed, onClose }: { person: Person | nul
                   </li>
                 ))}
               </ul>
+            </section>
+          ) : null}
+
+          {membership ? (
+            <section aria-labelledby="membership-heading" className="flex flex-col gap-1.5 text-[0.8125rem]">
+              <h3 id="membership-heading" className="font-semibold text-gray-700 dark:text-gray-300">
+                Membership
+              </h3>
+              {membership.paid ? (
+                <p className="font-medium text-green-700 dark:text-green-400">
+                  Paid {formatPeso(membership.feePaid ?? 0)}
+                  {membership.paidAt ? ` on ${formatDate(membership.paidAt)}` : ''}. Valid until{' '}
+                  {membership.validUntil ? formatDate(membership.validUntil) : '—'}.
+                </p>
+              ) : (
+                <p className="text-gray-600 dark:text-gray-400">
+                  Not paid yet for {membership.membershipYear}. Collect at {membership.eventName ?? 'the next main event'}.
+                </p>
+              )}
             </section>
           ) : null}
 

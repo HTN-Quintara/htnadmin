@@ -18,6 +18,7 @@ public sealed class CreatePersonRequestValidator : AbstractValidator<CreatePerso
         RuleFor(x => x.Level).NotNull().WithMessage("Choose a level.")
             .IsInEnum().WithMessage("Choose a level.");
         RuleFor(x => x.Position).MaximumLength(Person.PositionMaxLength).WithMessage($"Use at most {Person.PositionMaxLength} characters.");
+        RuleFor(x => x.MembershipFeeChoice).IsInEnum().When(x => x.MembershipFeeChoice is not null);
     }
 }
 

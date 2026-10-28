@@ -64,7 +64,8 @@ public sealed class MerchSaleRequestValidator : AbstractValidator<MerchSaleReque
     {
         RuleFor(x => x.ClientRequestId).NotNull().NotEqual(Guid.Empty).WithMessage("A client request id is required.");
         RuleFor(x => x.Method).NotNull().IsInEnum();
-        RuleFor(x => x.Lines).NotNull().Must(l => l!.Count > 0).WithMessage("A sale needs at least one line.");
+        RuleFor(x => x).Must(x => (x.Lines?.Count ?? 0) > 0 || x.IncludesMembership == true)
+            .WithMessage("A sale needs at least one item or the membership fee.").OverridePropertyName("lines");
         RuleForEach(x => x.Lines).SetValidator(new MerchSaleLineRequestValidator()).When(x => x.Lines is not null);
         RuleFor(x => x.Station).MaximumLength(Htn.Domain.Merch.MerchSale.StationMaxLength);
         RuleFor(x => x.BuyerName).MaximumLength(Htn.Domain.Merch.MerchSale.BuyerNameMaxLength)

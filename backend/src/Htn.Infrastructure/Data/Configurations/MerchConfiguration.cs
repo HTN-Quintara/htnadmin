@@ -88,8 +88,13 @@ internal sealed class MerchSaleConfiguration : IEntityTypeConfiguration<MerchSal
             t.HasCheckConstraint("ck_merch_sales_level",
                 CheckConstraints.In("buyer_level_snapshot", Enum.GetNames<PersonLevel>()) + " OR buyer_level_snapshot IS NULL");
             t.HasCheckConstraint("ck_merch_sales_discount", "discount_pct BETWEEN 0 AND 100");
+            // Phase 8B: a membership fee (undiscounted, never a merch item) rides on top of the discounted merch
+            // subtotal; the pair of columns is all-or-nothing and total accounts for both.
             t.HasCheckConstraint("ck_merch_sales_money",
-                "subtotal >= 0 AND discount_amount >= 0 AND total >= 0 AND total = subtotal - discount_amount");
+                "subtotal >= 0 AND discount_amount >= 0 AND total >= 0 " +
+                "AND total = subtotal - discount_amount + COALESCE(membership_fee_amount, 0) " +
+                "AND (membership_fee_included = FALSE) = (membership_fee_amount IS NULL) " +
+                "AND (membership_fee_amount IS NULL OR membership_fee_amount >= 0)");
         });
         b.HasKey(x => x.Id);
         b.Property(x => x.Id).ValueGeneratedNever();

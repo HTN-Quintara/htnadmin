@@ -64,6 +64,8 @@ export const merchSale = (over: Record<string, unknown> = {}) => ({
   station: 'Booth 1',
   soldAt: '2026-10-28T03:00:00Z',
   lines: [merchSaleLine()],
+  membershipFeeIncluded: false,
+  membershipFeeAmount: null,
   ...over,
 })
 

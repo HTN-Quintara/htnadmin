@@ -2,6 +2,7 @@ using System.Text;
 using Htn.Api.Auth;
 using Htn.Api.Common;
 using Htn.Api.Features.Finance;
+using Htn.Api.Features.Organization;
 using Htn.Api.Features.Registrations;
 using Htn.Domain.Common;
 using Htn.Domain.Merch;
@@ -12,6 +13,7 @@ using Htn.Infrastructure.Data;
 using Htn.Infrastructure.Identity;
 using Htn.Infrastructure.Tickets;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Net.Http.Headers;
 
@@ -61,7 +63,8 @@ public static class MerchEndpoints
         g.MapGet("/sales/export", ExportSales).RequireAuthorization(Policies.MerchManage);
 
         var pos = app.MapGroup("/api/events/{eventId:guid}/pos").WithTags("Pos");
-        pos.MapGet("/buyer-search", BuyerSearch).RequireAuthorization(Policies.MerchSell);
+        pos.MapGet("/buyer-search", BuyerSearch).RequireAuthorization(Policies.MerchSell)
+            .RequireRateLimiting(StaffSearchRateLimiting.Merch);
         pos.MapPost("/scan", Scan).RequireAuthorization(Policies.MerchSell)
             .RequireRateLimiting(SponsorsRateLimiting.Write).Validate<PosScanRequest>();
         pos.MapPost("/sale", Sell).RequireAuthorization(Policies.MerchSell)
@@ -350,9 +353,10 @@ public static class MerchEndpoints
 
     private static async Task<IResult> Sell(
         Guid eventId, MerchSaleRequest req, HttpContext http, IAuthorizationService auth, HtnDbContext db, AutoPost autoPost,
-        IAuditLog audit, ICurrentUser me, TimeProvider clock, CancellationToken ct)
+        UserManager<AppUser> users, IAuditLog audit, ICurrentUser me, TimeProvider clock, CancellationToken ct)
     {
-        if (!await db.Events.AnyAsync(e => e.Id == eventId, ct)) return TypedResults.NotFound();
+        var ev = await db.Events.AsNoTracking().FirstOrDefaultAsync(e => e.Id == eventId, ct);
+        if (ev is null) return TypedResults.NotFound();
         if (await auth.DenyAsync(http, new EventScope(eventId), Policies.MerchSell) is { } denied) return denied;
 
         // Idempotent replay: a retry of the same POS attempt (network retry, double-tap) resends the same
@@ -372,7 +376,8 @@ public static class MerchEndpoints
             return TypedResults.Ok(MerchViews.Sale(existing, existingLineDtos));
         }
 
-        var variantIds = req.Lines!.Select(l => l.VariantId!.Value).Distinct().ToList();
+        var lineRequests = req.Lines ?? [];
+        var variantIds = lineRequests.Select(l => l.VariantId!.Value).Distinct().ToList();
         var hits = await (
                 from v in db.MerchVariants.AsNoTracking()
                 join i in db.MerchItems.AsNoTracking().Where(i => i.EventId == eventId) on v.ItemId equals i.Id
@@ -384,7 +389,7 @@ public static class MerchEndpoints
             if (!byVariant.TryGetValue(variantId, out var hit) || !hit.v.IsActive || !hit.i.IsActive)
                 return Problems.Field("lines", "Pick an active item variant of this event.");
 
-        var requestedByVariant = req.Lines!.GroupBy(l => l.VariantId!.Value).ToDictionary(g => g.Key, g => g.Sum(l => l.Qty!.Value));
+        var requestedByVariant = lineRequests.GroupBy(l => l.VariantId!.Value).ToDictionary(g => g.Key, g => g.Sum(l => l.Qty!.Value));
         foreach (var (variantId, qty) in requestedByVariant)
         {
             var variant = byVariant[variantId].v;
@@ -410,10 +415,40 @@ public static class MerchEndpoints
         var buyerLevel = person?.Level;
 
         var now = clock.GetUtcNow();
+
+        // Phase 8B: the "Membership 2026" POS tile, for this sale's own buyer only (see MerchSaleRequest's doc
+        // comment for why this is a plain flag and not a separate membershipForPersonId/membershipForAttendeeId).
+        var includesMembership = req.IncludesMembership == true;
+        decimal? membershipFeeAmount = null;
+        Person? newMember = null;
+        if (includesMembership)
+        {
+            if (person is not null)
+                return MerchOps.Conflict($"{person.FullName} is already a {person.Level} — remove it from the cart.",
+                    MerchErrorCodes.AlreadyAMember);
+            if (attendee is null)
+                return MerchOps.Conflict("Pick a buyer who has registered for an event before adding membership.",
+                    MerchErrorCodes.BuyerRequiredForMembership);
+            if (!ev.IsMainEvent || ev.MembershipFee is null || ev.MembershipYear is null)
+                return MerchOps.Conflict("Membership isn't sold at this event.", MerchErrorCodes.MembershipNotAvailable);
+            var attendeeEmail = Person.NormalizeEmail(attendee.Email);
+            if (!await PeopleEndpoints.HasCheckedInAsync(db, attendeeEmail, ct))
+                return MerchOps.Conflict("This attendee hasn't checked in at an event yet, so they can't become a Member.",
+                    MerchErrorCodes.NotCheckedIn);
+
+            membershipFeeAmount = ev.MembershipFee.Value;
+            var (created, dupError) = await PeopleEndpoints.CreatePersonCoreAsync(
+                db, users, attendee.FirstName, attendee.MiddleName, attendee.LastName, attendeeEmail, PersonLevel.Member,
+                position: null, me.Id, now, ct);
+            if (dupError is not null) return dupError; // a Person with this email appeared between the check above and now
+            newMember = created;
+            buyerLevel = null; // an Attendee (even one about to become a Member) still pays full price on the merch lines
+        }
+
         var settings = await GetOrCreateSettingsAsync(db, eventId, now, ct);
         var discountPct = settings.PctFor(buyerLevel);
 
-        var lineInputs = req.Lines!
+        var lineInputs = lineRequests
             .Select(l => new NewMerchSaleLine(byVariant[l.VariantId!.Value].i.Id, l.VariantId!.Value, l.Qty!.Value, byVariant[l.VariantId!.Value].i.Price))
             .ToList();
 
@@ -423,7 +458,7 @@ public static class MerchEndpoints
         {
             (sale, lines) = Htn.Domain.Merch.MerchSale.Create(
                 eventId, req.ClientRequestId!.Value, person?.Id, attendee?.Id, buyerName!, buyerLevel, lineInputs, discountPct, req.Method!.Value,
-                me.Id!.Value, req.Station, now);
+                me.Id!.Value, req.Station, includesMembership, membershipFeeAmount, now);
         }
         catch (DomainException ex)
         {
@@ -433,11 +468,25 @@ public static class MerchEndpoints
         db.MerchSales.Add(sale);
         db.MerchSaleLines.AddRange(lines);
         await autoPost.MerchSaleAsync(sale, me.Id!.Value, now, ct);
+
+        if (includesMembership && newMember is not null)
+        {
+            var validUntil = await MembershipSupport.ResolveValidUntilAsync(db, ev.MembershipYear!.Value, now, ct);
+            var membership = Membership.Create(
+                newMember.Id, ev.MembershipYear!.Value, membershipFeeAmount!.Value, now, MembershipPaidVia.Pos,
+                eventId, me.Id!.Value, validUntil, now);
+            db.Memberships.Add(membership);
+            await autoPost.MembershipPaymentAsync(membership, newMember.FullName, me.Id!.Value, now, ct);
+            audit.Record(me.Id, MerchAuditActions.PersonCreatedViaMembershipSale, nameof(Person), newMember.Id.ToString(),
+                after: new { newMember.FirstName, newMember.LastName, newMember.Email, membership.MembershipYear, membership.FeePaid, saleId = sale.Id });
+        }
+
         audit.Record(me.Id, MerchAuditActions.SaleCreate, nameof(MerchSale), sale.Id.ToString(),
             after: new
             {
                 sale.EventId, sale.BuyerNameSnapshot, buyerLevel = sale.BuyerLevelSnapshot?.ToString(), sale.Subtotal,
                 sale.DiscountPct, sale.DiscountAmount, sale.Total, method = sale.Method.ToString(),
+                sale.MembershipFeeIncluded, sale.MembershipFeeAmount,
                 lines = lines.Select(l => new { l.VariantId, l.Qty, l.UnitPriceSnapshot }),
             });
 
@@ -451,18 +500,29 @@ public static class MerchEndpoints
             return MerchOps.Conflict("Someone else just took the last stock. Reload and try again.", MerchErrorCodes.InsufficientStock);
         }
         catch (Microsoft.EntityFrameworkCore.DbUpdateException ex)
-            when (ex.InnerException is Npgsql.PostgresException { SqlState: Npgsql.PostgresErrorCodes.UniqueViolation })
+            when (ex.InnerException is Npgsql.PostgresException { SqlState: Npgsql.PostgresErrorCodes.UniqueViolation } pg)
         {
-            // Two near-simultaneous retries of the same attempt both missed the pre-check above and both tried to
-            // insert; the loser just needs to hand back the winner's row, not fail the request.
-            var winner = await db.MerchSales.AsNoTracking()
-                .FirstOrDefaultAsync(s => s.EventId == eventId && s.ClientRequestId == req.ClientRequestId!.Value, ct);
-            if (winner is null) throw;
-            var winnerLines = await db.MerchSaleLines.AsNoTracking().Where(l => l.SaleId == winner.Id).ToListAsync(ct);
-            var winnerLineDtos = winnerLines.Select(l => MerchViews.Line(l,
-                byVariant.TryGetValue(l.VariantId, out var h) ? h.i.Name : "(removed item)",
-                byVariant.TryGetValue(l.VariantId, out var h2) ? h2.v.Label : "(removed variant)")).ToList();
-            return TypedResults.Ok(MerchViews.Sale(winner, winnerLineDtos));
+            // This SaveChanges can trip three different unique indexes, each needing its own recovery: the sale's
+            // own dedup key (two near-simultaneous retries of the same attempt — hand back the winner's row, not an
+            // error), or, on the membership path, a race on the attendee's email or membership year (someone else's
+            // concurrent sale/manual record won first — a clean conflict, not a raw 500).
+            if (pg.ConstraintName == "ux_merch_sales_event_client_request_id")
+            {
+                var winner = await db.MerchSales.AsNoTracking()
+                    .FirstOrDefaultAsync(s => s.EventId == eventId && s.ClientRequestId == req.ClientRequestId!.Value, ct);
+                if (winner is null) throw;
+                var winnerLines = await db.MerchSaleLines.AsNoTracking().Where(l => l.SaleId == winner.Id).ToListAsync(ct);
+                var winnerLineDtos = winnerLines.Select(l => MerchViews.Line(l,
+                    byVariant.TryGetValue(l.VariantId, out var h) ? h.i.Name : "(removed item)",
+                    byVariant.TryGetValue(l.VariantId, out var h2) ? h2.v.Label : "(removed variant)")).ToList();
+                return TypedResults.Ok(MerchViews.Sale(winner, winnerLineDtos));
+            }
+            if (pg.ConstraintName == "ux_memberships_person_year" || pg.ConstraintName == "ix_people_email")
+            {
+                return MerchOps.Conflict(
+                    "Someone else just created this person's account. Reload and try again.", MerchErrorCodes.AlreadyAMember);
+            }
+            throw;
         }
 
         var lineDtos = lines.Select(l => MerchViews.Line(l, byVariant[l.VariantId].i.Name, byVariant[l.VariantId].v.Label)).ToList();

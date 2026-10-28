@@ -58,6 +58,7 @@ function Pos({ event }: { event: EventDetail }) {
   const [buyer, setBuyer] = useState<BuyerHit | null>(null)
   const [cart, setCart] = useState<CartLine[]>([])
   const [method, setMethod] = useState<MerchSaleMethod>('Cash')
+  const [includesMembership, setIncludesMembership] = useState(false)
   const [completed, setCompleted] = useState<MerchSale | null>(null)
   // One key per distinct sale attempt: the same value is resent on every retry (a failed request, a
   // slow network, a double-tap) so the server can collapse duplicates into the original sale instead of
@@ -83,19 +84,42 @@ function Pos({ event }: { event: EventDetail }) {
     setBuyer(null)
     setCart([])
     setMethod('Cash')
+    setIncludesMembership(false)
     setCompleted(null)
     setClientRequestId(crypto.randomUUID())
     sell.reset()
   }
 
+  function pickBuyer(hit: BuyerHit) {
+    setBuyer(hit)
+    // A resolved Person (any level) already is a member of the organization — drop a pending membership
+    // toggle rather than leave it silently stuck on a buyer who can never actually receive it.
+    if (hit.kind === 'Person') setIncludesMembership(false)
+  }
+
+  // Phase 8B: the "Membership {year}" POS tile — available only when this event is the current main event
+  // with a configured fee, mirroring the server's own `MembershipNotAvailable` check.
+  const membershipFee = event.membershipFee ?? 0
+  const membershipYear = event.membershipYear ?? null
+  const membershipAvailable = event.isMainEvent && event.membershipFee != null && membershipYear != null
+
   const subtotal = cart.reduce((sum, l) => sum + l.unitPrice * l.qty, 0)
   const pct = buyer ? pctFor(discounts.data, buyer.level) : null
   const discountAmount = pct != null ? Math.round(subtotal * pct) / 100 : buyer && buyer.level !== 'Attendee' ? 0 : null
   const discountLabel = buyer && buyer.level !== 'Attendee' ? (pct != null ? `${buyer.level} discount (${pct}%)` : 'Discount') : null
-  const total = subtotal - (discountAmount ?? 0)
+  const membershipFeeAmount = includesMembership ? membershipFee : null
+  const total = subtotal - (discountAmount ?? 0) + (membershipFeeAmount ?? 0)
+
+  const membershipNote = !includesMembership
+    ? null
+    : buyer?.kind === 'Person'
+      ? `${buyer.name} is already a ${buyer.level}. Remove membership from the cart.`
+      : buyer
+        ? `Membership will be added for ${buyer.name}.`
+        : null
 
   function onSubmit() {
-    if (!buyer || cart.length === 0 || sell.isPending) return
+    if (!buyer || (cart.length === 0 && !includesMembership) || sell.isPending) return
     sell.mutate(
       {
         clientRequestId,
@@ -105,6 +129,7 @@ function Pos({ event }: { event: EventDetail }) {
         lines: cart.map((l) => ({ variantId: l.variantId, qty: l.qty })),
         method,
         station,
+        includesMembership,
       },
       { onSuccess: (sale) => setCompleted(sale) },
     )
@@ -144,6 +169,16 @@ function Pos({ event }: { event: EventDetail }) {
               <ProductGrid
                 items={dashboard.data.items}
                 onAdd={(item, variant) => addToCart(item.id, item.name, variant.id, variant.label, item.price)}
+                membership={
+                  membershipAvailable && membershipYear != null
+                    ? {
+                        year: membershipYear,
+                        fee: membershipFee,
+                        included: includesMembership,
+                        onToggle: () => setIncludesMembership((v) => !v),
+                      }
+                    : null
+                }
               />
             )
           ) : null}
@@ -156,7 +191,7 @@ function Pos({ event }: { event: EventDetail }) {
               <PosReceipt sale={completed} onNewSale={resetSale} />
             ) : (
               <div className="flex flex-col gap-5">
-                <BuyerPanel eventId={event.id} buyer={buyer} discountPct={pct} onPick={setBuyer} onClear={() => setBuyer(null)} />
+                <BuyerPanel eventId={event.id} buyer={buyer} discountPct={pct} onPick={pickBuyer} onClear={() => setBuyer(null)} />
                 <div aria-live="polite">
                   {sell.isError ? <Alert tone="red" live="alert">{errorMessage(sell.error)}</Alert> : null}
                 </div>
@@ -172,6 +207,9 @@ function Pos({ event }: { event: EventDetail }) {
                   hasBuyer={!!buyer}
                   onSubmit={onSubmit}
                   submitting={sell.isPending}
+                  membershipFeeAmount={membershipFeeAmount}
+                  membershipYear={event.membershipYear}
+                  membershipNote={membershipNote}
                 />
               </div>
             )}

@@ -24,6 +24,11 @@ type Props = {
   hasBuyer: boolean
   onSubmit: () => void
   submitting: boolean
+  /** Phase 8B: the membership fee line, shown undiscounted when the POS tile is toggled on. */
+  membershipFeeAmount?: number | null
+  membershipYear?: number | null
+  /** Contextual note about the buyer's membership eligibility (frame 21's hint text). */
+  membershipNote?: string | null
 }
 
 const methodOptions: Array<{ value: MerchSaleMethod; label: string }> = [
@@ -33,11 +38,27 @@ const methodOptions: Array<{ value: MerchSaleMethod; label: string }> = [
 ]
 
 /** Cart + totals + payment method + submit (canvas frame 21, "Current sale"). */
-export function CartPanel({ lines, onQtyChange, subtotal, discountLabel, discountAmount, total, method, onMethodChange, hasBuyer, onSubmit, submitting }: Props) {
+export function CartPanel({
+  lines,
+  onQtyChange,
+  subtotal,
+  discountLabel,
+  discountAmount,
+  total,
+  method,
+  onMethodChange,
+  hasBuyer,
+  onSubmit,
+  submitting,
+  membershipFeeAmount = null,
+  membershipYear = null,
+  membershipNote = null,
+}: Props) {
   const hasItems = lines.length > 0
+  const hasAnything = hasItems || membershipFeeAmount != null
   const hint = !hasBuyer
     ? 'Identify the buyer first so the sale is tied to a person.'
-    : !hasItems
+    : !hasAnything
       ? 'Add at least one item.'
       : 'Stock updates as soon as the sale is completed.'
 
@@ -95,6 +116,12 @@ export function CartPanel({ lines, onQtyChange, subtotal, discountLabel, discoun
             <span className="tabular-nums">−{formatPeso(discountAmount)}</span>
           </div>
         ) : null}
+        {membershipFeeAmount != null ? (
+          <div className="flex items-center justify-between text-gray-700 dark:text-gray-300">
+            <span>Membership {membershipYear}</span>
+            <span className="tabular-nums">{formatPeso(membershipFeeAmount)}</span>
+          </div>
+        ) : null}
         <div className="flex items-center justify-between text-base font-semibold text-gray-900 dark:text-gray-50">
           <span>Total</span>
           <span className="tabular-nums">{formatPeso(total)}</span>
@@ -116,10 +143,15 @@ export function CartPanel({ lines, onQtyChange, subtotal, discountLabel, discoun
         />
       </div>
 
-      <Button block size="lg" disabled={!hasBuyer || !hasItems} loading={submitting} onClick={onSubmit}>
+      <Button block size="lg" disabled={!hasBuyer || !hasAnything} loading={submitting} onClick={onSubmit}>
         Complete sale · {formatPeso(total)}
       </Button>
       <p className="text-center text-xs text-gray-600 dark:text-gray-400">{hint}</p>
+      {membershipNote ? (
+        <p aria-live="polite" className="text-center text-xs font-medium text-gray-700 dark:text-gray-300">
+          {membershipNote}
+        </p>
+      ) : null}
     </div>
   )
 }

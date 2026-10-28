@@ -57,6 +57,38 @@ describe('Member rule UI', () => {
     expect(within(drawer).queryByText('Attended')).not.toBeInTheDocument()
   })
 
+  it('shows the Membership section when paid', async () => {
+    signInAs(boardMe)
+    mockDetail({
+      membership: { membershipYear: 2026, paid: true, feePaid: 300, paidAt: '2026-11-22T01:00:00Z', eventName: 'HTN Con 2026', validUntil: '2027-11-20T00:00:00Z' },
+    })
+    renderWithProviders(<PersonDrawer person={volunteer} onClose={vi.fn()} />)
+    const drawer = await screen.findByRole('dialog', { name: 'Person details' })
+    const section = await within(drawer).findByRole('region', { name: 'Membership' })
+    expect(within(section).getByText(/Paid ₱300/)).toBeInTheDocument()
+    expect(within(section).getByText(/Valid until/)).toBeInTheDocument()
+  })
+
+  it('shows the Membership section when unpaid, naming where to collect it', async () => {
+    signInAs(boardMe)
+    mockDetail({
+      membership: { membershipYear: 2026, paid: false, feePaid: null, paidAt: null, eventName: 'HTN Con 2026', validUntil: null },
+    })
+    renderWithProviders(<PersonDrawer person={volunteer} onClose={vi.fn()} />)
+    const drawer = await screen.findByRole('dialog', { name: 'Person details' })
+    const section = await within(drawer).findByRole('region', { name: 'Membership' })
+    expect(within(section).getByText('Not paid yet for 2026. Collect at HTN Con 2026.')).toBeInTheDocument()
+  })
+
+  it('omits the Membership section entirely when absent (not a Member, or not board)', async () => {
+    signInAs(boardMe)
+    mockDetail({})
+    renderWithProviders(<PersonDrawer person={volunteer} onClose={vi.fn()} />)
+    const drawer = await screen.findByRole('dialog', { name: 'Person details' })
+    await within(drawer).findByText('No changes recorded yet.')
+    expect(within(drawer).queryByRole('region', { name: 'Membership' })).not.toBeInTheDocument()
+  })
+
   it('shows no_check_in on the level field when moving someone to Member', async () => {
     signInAs(boardMe)
     server.use(http.post('/api/people/p7/promote', () => problem(400, 'Bad Request', 'no_check_in')))

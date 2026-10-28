@@ -66,6 +66,10 @@ export const merchSaleSchema = z.object({
   station: z.string().nullable(),
   soldAt: z.string(),
   lines: z.array(merchSaleLineSchema),
+  // Phase 8B: the "Membership {year}" POS tile. The fee is a flat yearly dues amount, never discounted,
+  // added on top of the (already-discounted) merch subtotal — see `Htn.Domain.Merch.MerchSale`.
+  membershipFeeIncluded: z.boolean().default(false),
+  membershipFeeAmount: z.number().nullable().default(null),
 })
 export type MerchSale = z.infer<typeof merchSaleSchema>
 

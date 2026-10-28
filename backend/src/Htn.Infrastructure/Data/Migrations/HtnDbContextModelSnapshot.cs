@@ -2516,6 +2516,15 @@ namespace Htn.Infrastructure.Data.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("event_id");
 
+                    b.Property<decimal?>("MembershipFeeAmount")
+                        .HasPrecision(12, 2)
+                        .HasColumnType("numeric(12,2)")
+                        .HasColumnName("membership_fee_amount");
+
+                    b.Property<bool>("MembershipFeeIncluded")
+                        .HasColumnType("boolean")
+                        .HasColumnName("membership_fee_included");
+
                     b.Property<string>("Method")
                         .IsRequired()
                         .HasMaxLength(8)
@@ -2568,7 +2577,7 @@ namespace Htn.Infrastructure.Data.Migrations
 
                             t.HasCheckConstraint("ck_merch_sales_method", "method IN ('Cash', 'GCash', 'Bank')");
 
-                            t.HasCheckConstraint("ck_merch_sales_money", "subtotal >= 0 AND discount_amount >= 0 AND total >= 0 AND total = subtotal - discount_amount");
+                            t.HasCheckConstraint("ck_merch_sales_money", "subtotal >= 0 AND discount_amount >= 0 AND total >= 0 AND total = subtotal - discount_amount + COALESCE(membership_fee_amount, 0) AND (membership_fee_included = FALSE) = (membership_fee_amount IS NULL) AND (membership_fee_amount IS NULL OR membership_fee_amount >= 0)");
                         });
                 });
 
@@ -2692,6 +2701,69 @@ namespace Htn.Infrastructure.Data.Migrations
                             t.HasCheckConstraint("ck_merch_variants_deactivated", "(deactivated_at IS NULL) = (deactivate_reason IS NULL) AND (deactivated_at IS NULL) = (deactivated_by_id IS NULL)");
 
                             t.HasCheckConstraint("ck_merch_variants_stock", "stock_on_hand BETWEEN 0 AND 1000000");
+                        });
+                });
+
+            modelBuilder.Entity("Htn.Domain.Organization.Membership", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid?>("EventId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("event_id");
+
+                    b.Property<decimal>("FeePaid")
+                        .HasPrecision(12, 2)
+                        .HasColumnType("numeric(12,2)")
+                        .HasColumnName("fee_paid");
+
+                    b.Property<int>("MembershipYear")
+                        .HasColumnType("integer")
+                        .HasColumnName("membership_year");
+
+                    b.Property<DateTimeOffset>("PaidAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("paid_at");
+
+                    b.Property<string>("PaidVia")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("paid_via");
+
+                    b.Property<Guid>("PersonId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("person_id");
+
+                    b.Property<Guid>("RecordedById")
+                        .HasColumnType("uuid")
+                        .HasColumnName("recorded_by_id");
+
+                    b.Property<DateTimeOffset>("ValidUntil")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("valid_until");
+
+                    b.HasKey("Id")
+                        .HasName("pk_memberships");
+
+                    b.HasIndex("EventId")
+                        .HasDatabaseName("ix_memberships_event_id");
+
+                    b.HasIndex("PersonId", "MembershipYear")
+                        .IsUnique()
+                        .HasDatabaseName("ux_memberships_person_year");
+
+                    b.ToTable("memberships", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_memberships_fee", "fee_paid >= 0");
+
+                            t.HasCheckConstraint("ck_memberships_paid_via", "paid_via IN ('Pos', 'RecordedManually')");
+
+                            t.HasCheckConstraint("ck_memberships_valid_until", "valid_until > paid_at");
+
+                            t.HasCheckConstraint("ck_memberships_year", "membership_year BETWEEN 2000 AND 2100");
                         });
                 });
 
@@ -6600,6 +6672,22 @@ namespace Htn.Infrastructure.Data.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
                         .HasConstraintName("fk_merch_variants_merch_items_item_id");
+                });
+
+            modelBuilder.Entity("Htn.Domain.Organization.Membership", b =>
+                {
+                    b.HasOne("Htn.Domain.Events.Event", null)
+                        .WithMany()
+                        .HasForeignKey("EventId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_memberships_events_event_id");
+
+                    b.HasOne("Htn.Domain.Organization.Person", null)
+                        .WithMany()
+                        .HasForeignKey("PersonId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_memberships_people_person_id");
                 });
 
             modelBuilder.Entity("Htn.Domain.Organization.PersonHistory", b =>
