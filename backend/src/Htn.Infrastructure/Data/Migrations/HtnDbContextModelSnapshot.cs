@@ -2335,6 +2335,366 @@ namespace Htn.Infrastructure.Data.Migrations
                         });
                 });
 
+            modelBuilder.Entity("Htn.Domain.Merch.EventMerchSettings", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<int>("ApprenticePct")
+                        .HasColumnType("integer")
+                        .HasColumnName("apprentice_pct");
+
+                    b.Property<int>("BoardPct")
+                        .HasColumnType("integer")
+                        .HasColumnName("board_pct");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid>("EventId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("event_id");
+
+                    b.Property<int>("GoonPct")
+                        .HasColumnType("integer")
+                        .HasColumnName("goon_pct");
+
+                    b.Property<int>("MemberPct")
+                        .HasColumnType("integer")
+                        .HasColumnName("member_pct");
+
+                    b.Property<uint>("RowVersion")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedById")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_event_merch_settings");
+
+                    b.HasIndex("EventId")
+                        .IsUnique()
+                        .HasDatabaseName("ux_event_merch_settings_event");
+
+                    b.ToTable("event_merch_settings", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_event_merch_settings_pct", "goon_pct BETWEEN 0 AND 100 AND apprentice_pct BETWEEN 0 AND 100 AND member_pct BETWEEN 0 AND 100 AND board_pct BETWEEN 0 AND 100");
+                        });
+                });
+
+            modelBuilder.Entity("Htn.Domain.Merch.MerchItem", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedById")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by_id");
+
+                    b.Property<string>("DeactivateReason")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("deactivate_reason");
+
+                    b.Property<DateTimeOffset?>("DeactivatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("deactivated_at");
+
+                    b.Property<Guid?>("DeactivatedById")
+                        .HasColumnType("uuid")
+                        .HasColumnName("deactivated_by_id");
+
+                    b.Property<Guid>("EventId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("event_id");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(160)
+                        .HasColumnType("character varying(160)")
+                        .HasColumnName("name");
+
+                    b.Property<decimal>("Price")
+                        .HasPrecision(12, 2)
+                        .HasColumnType("numeric(12,2)")
+                        .HasColumnName("price");
+
+                    b.Property<uint>("RowVersion")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.Property<string>("SwatchColor")
+                        .HasMaxLength(7)
+                        .HasColumnType("character(7)")
+                        .HasColumnName("swatch_color")
+                        .IsFixedLength();
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedById")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_merch_items");
+
+                    b.HasIndex("EventId")
+                        .HasDatabaseName("ix_merch_items_event");
+
+                    b.ToTable("merch_items", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_merch_items_deactivated", "(deactivated_at IS NULL) = (deactivate_reason IS NULL) AND (deactivated_at IS NULL) = (deactivated_by_id IS NULL)");
+
+                            t.HasCheckConstraint("ck_merch_items_price", "price >= 0");
+
+                            t.HasCheckConstraint("ck_merch_items_swatch", "swatch_color IS NULL OR swatch_color ~ '^#[0-9A-Fa-f]{6}$'");
+                        });
+                });
+
+            modelBuilder.Entity("Htn.Domain.Merch.MerchSale", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid?>("BuyerAttendeeId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("buyer_attendee_id");
+
+                    b.Property<string>("BuyerLevelSnapshot")
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)")
+                        .HasColumnName("buyer_level_snapshot");
+
+                    b.Property<string>("BuyerNameSnapshot")
+                        .IsRequired()
+                        .HasMaxLength(160)
+                        .HasColumnType("character varying(160)")
+                        .HasColumnName("buyer_name_snapshot");
+
+                    b.Property<Guid?>("BuyerPersonId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("buyer_person_id");
+
+                    b.Property<Guid>("CashierId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("cashier_id");
+
+                    b.Property<Guid>("ClientRequestId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("client_request_id");
+
+                    b.Property<decimal>("DiscountAmount")
+                        .HasPrecision(12, 2)
+                        .HasColumnType("numeric(12,2)")
+                        .HasColumnName("discount_amount");
+
+                    b.Property<int>("DiscountPct")
+                        .HasColumnType("integer")
+                        .HasColumnName("discount_pct");
+
+                    b.Property<Guid>("EventId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("event_id");
+
+                    b.Property<string>("Method")
+                        .IsRequired()
+                        .HasMaxLength(8)
+                        .HasColumnType("character varying(8)")
+                        .HasColumnName("method");
+
+                    b.Property<DateTimeOffset>("SoldAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("sold_at");
+
+                    b.Property<string>("Station")
+                        .HasMaxLength(60)
+                        .HasColumnType("character varying(60)")
+                        .HasColumnName("station");
+
+                    b.Property<decimal>("Subtotal")
+                        .HasPrecision(12, 2)
+                        .HasColumnType("numeric(12,2)")
+                        .HasColumnName("subtotal");
+
+                    b.Property<decimal>("Total")
+                        .HasPrecision(12, 2)
+                        .HasColumnType("numeric(12,2)")
+                        .HasColumnName("total");
+
+                    b.HasKey("Id")
+                        .HasName("pk_merch_sales");
+
+                    b.HasIndex("BuyerAttendeeId")
+                        .HasDatabaseName("ix_merch_sales_buyer_attendee_id");
+
+                    b.HasIndex("BuyerPersonId")
+                        .HasDatabaseName("ix_merch_sales_buyer_person_id");
+
+                    b.HasIndex("EventId")
+                        .HasDatabaseName("ix_merch_sales_event");
+
+                    b.HasIndex("SoldAt")
+                        .HasDatabaseName("ix_merch_sales_sold_at");
+
+                    b.HasIndex("EventId", "ClientRequestId")
+                        .IsUnique()
+                        .HasDatabaseName("ux_merch_sales_event_client_request_id");
+
+                    b.ToTable("merch_sales", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_merch_sales_discount", "discount_pct BETWEEN 0 AND 100");
+
+                            t.HasCheckConstraint("ck_merch_sales_level", "buyer_level_snapshot IN ('Board', 'Goon', 'Apprentice', 'Member') OR buyer_level_snapshot IS NULL");
+
+                            t.HasCheckConstraint("ck_merch_sales_method", "method IN ('Cash', 'GCash', 'Bank')");
+
+                            t.HasCheckConstraint("ck_merch_sales_money", "subtotal >= 0 AND discount_amount >= 0 AND total >= 0 AND total = subtotal - discount_amount");
+                        });
+                });
+
+            modelBuilder.Entity("Htn.Domain.Merch.MerchSaleLine", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("ItemId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("item_id");
+
+                    b.Property<decimal>("LineTotal")
+                        .HasPrecision(12, 2)
+                        .HasColumnType("numeric(12,2)")
+                        .HasColumnName("line_total");
+
+                    b.Property<int>("Qty")
+                        .HasColumnType("integer")
+                        .HasColumnName("qty");
+
+                    b.Property<Guid>("SaleId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("sale_id");
+
+                    b.Property<decimal>("UnitPriceSnapshot")
+                        .HasPrecision(12, 2)
+                        .HasColumnType("numeric(12,2)")
+                        .HasColumnName("unit_price_snapshot");
+
+                    b.Property<Guid>("VariantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("variant_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_merch_sale_lines");
+
+                    b.HasIndex("ItemId")
+                        .HasDatabaseName("ix_merch_sale_lines_item_id");
+
+                    b.HasIndex("SaleId")
+                        .HasDatabaseName("ix_merch_sale_lines_sale");
+
+                    b.HasIndex("VariantId")
+                        .HasDatabaseName("ix_merch_sale_lines_variant");
+
+                    b.ToTable("merch_sale_lines", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_merch_sale_lines_money", "unit_price_snapshot >= 0 AND line_total >= 0 AND line_total = round(unit_price_snapshot * qty, 2)");
+
+                            t.HasCheckConstraint("ck_merch_sale_lines_qty", "qty > 0");
+                        });
+                });
+
+            modelBuilder.Entity("Htn.Domain.Merch.MerchVariant", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedById")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by_id");
+
+                    b.Property<string>("DeactivateReason")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("deactivate_reason");
+
+                    b.Property<DateTimeOffset?>("DeactivatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("deactivated_at");
+
+                    b.Property<Guid?>("DeactivatedById")
+                        .HasColumnType("uuid")
+                        .HasColumnName("deactivated_by_id");
+
+                    b.Property<Guid>("ItemId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("item_id");
+
+                    b.Property<string>("Label")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
+                        .HasColumnName("label");
+
+                    b.Property<uint>("RowVersion")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.Property<int>("StockOnHand")
+                        .HasColumnType("integer")
+                        .HasColumnName("stock_on_hand");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedById")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_merch_variants");
+
+                    b.HasIndex("ItemId", "Label")
+                        .IsUnique()
+                        .HasDatabaseName("ux_merch_variants_item_label")
+                        .HasFilter("deactivated_at IS NULL");
+
+                    b.ToTable("merch_variants", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_merch_variants_deactivated", "(deactivated_at IS NULL) = (deactivate_reason IS NULL) AND (deactivated_at IS NULL) = (deactivated_by_id IS NULL)");
+
+                            t.HasCheckConstraint("ck_merch_variants_stock", "stock_on_hand BETWEEN 0 AND 1000000");
+                        });
+                });
+
             modelBuilder.Entity("Htn.Domain.Organization.Person", b =>
                 {
                     b.Property<Guid>("Id")
@@ -3113,10 +3473,22 @@ namespace Htn.Infrastructure.Data.Migrations
                         .HasColumnType("integer")
                         .HasColumnName("id");
 
+                    b.Property<int>("ApprenticeMerchDiscountPct")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(15)
+                        .HasColumnName("apprentice_merch_discount_pct");
+
                     b.Property<decimal>("AssistantMultiplier")
                         .HasPrecision(3, 1)
                         .HasColumnType("numeric(3,1)")
                         .HasColumnName("assistant_multiplier");
+
+                    b.Property<int>("BoardMerchDiscountPct")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0)
+                        .HasColumnName("board_merch_discount_pct");
 
                     b.Property<string>("BrandColor")
                         .IsRequired()
@@ -3130,6 +3502,12 @@ namespace Htn.Infrastructure.Data.Migrations
                         .HasColumnType("numeric(3,1)")
                         .HasColumnName("collab_multiplier");
 
+                    b.Property<int>("GoonMerchDiscountPct")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(20)
+                        .HasColumnName("goon_merch_discount_pct");
+
                     b.Property<decimal>("LeadMultiplier")
                         .HasPrecision(3, 1)
                         .HasColumnType("numeric(3,1)")
@@ -3142,6 +3520,12 @@ namespace Htn.Infrastructure.Data.Migrations
                     b.Property<Guid?>("LogoLightFileId")
                         .HasColumnType("uuid")
                         .HasColumnName("logo_light_file_id");
+
+                    b.Property<int>("MemberMerchDiscountPct")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(10)
+                        .HasColumnName("member_merch_discount_pct");
 
                     b.Property<int>("PaymentDeadlineHours")
                         .HasColumnType("integer")
@@ -3187,6 +3571,8 @@ namespace Htn.Infrastructure.Data.Migrations
                     b.ToTable("org_settings", null, t =>
                         {
                             t.HasCheckConstraint("ck_org_settings_brand_color", "brand_color ~ '^#[0-9A-Fa-f]{6}$'");
+
+                            t.HasCheckConstraint("ck_org_settings_merch_discounts", "goon_merch_discount_pct BETWEEN 0 AND 100 AND apprentice_merch_discount_pct BETWEEN 0 AND 100 AND member_merch_discount_pct BETWEEN 0 AND 100 AND board_merch_discount_pct BETWEEN 0 AND 100");
 
                             t.HasCheckConstraint("ck_org_settings_multipliers", "lead_multiplier BETWEEN 0 AND 2 AND collab_multiplier BETWEEN 0 AND 2 AND assistant_multiplier BETWEEN 0 AND 2");
 
@@ -6138,6 +6524,82 @@ namespace Htn.Infrastructure.Data.Migrations
                         .HasForeignKey("SponsorId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .HasConstraintName("fk_leads_sponsors_sponsor_id");
+                });
+
+            modelBuilder.Entity("Htn.Domain.Merch.EventMerchSettings", b =>
+                {
+                    b.HasOne("Htn.Domain.Events.Event", null)
+                        .WithMany()
+                        .HasForeignKey("EventId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_event_merch_settings_events_event_id");
+                });
+
+            modelBuilder.Entity("Htn.Domain.Merch.MerchItem", b =>
+                {
+                    b.HasOne("Htn.Domain.Events.Event", null)
+                        .WithMany()
+                        .HasForeignKey("EventId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_merch_items_events_event_id");
+                });
+
+            modelBuilder.Entity("Htn.Domain.Merch.MerchSale", b =>
+                {
+                    b.HasOne("Htn.Domain.Registrations.Attendee", null)
+                        .WithMany()
+                        .HasForeignKey("BuyerAttendeeId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_merch_sales_attendees_buyer_attendee_id");
+
+                    b.HasOne("Htn.Domain.Organization.Person", null)
+                        .WithMany()
+                        .HasForeignKey("BuyerPersonId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_merch_sales_people_buyer_person_id");
+
+                    b.HasOne("Htn.Domain.Events.Event", null)
+                        .WithMany()
+                        .HasForeignKey("EventId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_merch_sales_events_event_id");
+                });
+
+            modelBuilder.Entity("Htn.Domain.Merch.MerchSaleLine", b =>
+                {
+                    b.HasOne("Htn.Domain.Merch.MerchItem", null)
+                        .WithMany()
+                        .HasForeignKey("ItemId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_merch_sale_lines_merch_items_item_id");
+
+                    b.HasOne("Htn.Domain.Merch.MerchSale", null)
+                        .WithMany()
+                        .HasForeignKey("SaleId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_merch_sale_lines_merch_sales_sale_id");
+
+                    b.HasOne("Htn.Domain.Merch.MerchVariant", null)
+                        .WithMany()
+                        .HasForeignKey("VariantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_merch_sale_lines_merch_variants_variant_id");
+                });
+
+            modelBuilder.Entity("Htn.Domain.Merch.MerchVariant", b =>
+                {
+                    b.HasOne("Htn.Domain.Merch.MerchItem", null)
+                        .WithMany()
+                        .HasForeignKey("ItemId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_merch_variants_merch_items_item_id");
                 });
 
             modelBuilder.Entity("Htn.Domain.Organization.PersonHistory", b =>

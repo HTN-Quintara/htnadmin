@@ -11,6 +11,7 @@ using Htn.Domain.Outbox;
 using Htn.Domain.Registrations;
 using Htn.Domain.Agenda;
 using Htn.Domain.Leads;
+using Htn.Domain.Merch;
 using Htn.Domain.Speakers;
 using Htn.Domain.Sponsors;
 using Htn.Domain.Settings;
@@ -89,6 +90,11 @@ public sealed class HtnDbContext(DbContextOptions<HtnDbContext> options)
     public DbSet<SupplierDocument> SupplierDocuments => Set<SupplierDocument>();
     public DbSet<EventSupplier> EventSuppliers => Set<EventSupplier>();
     public DbSet<SupplierRating> SupplierRatings => Set<SupplierRating>();
+    public DbSet<MerchItem> MerchItems => Set<MerchItem>();
+    public DbSet<MerchVariant> MerchVariants => Set<MerchVariant>();
+    public DbSet<EventMerchSettings> EventMerchSettings => Set<EventMerchSettings>();
+    public DbSet<MerchSale> MerchSales => Set<MerchSale>();
+    public DbSet<MerchSaleLine> MerchSaleLines => Set<MerchSaleLine>();
     public DbSet<AuditEntry> AuditEntries => Set<AuditEntry>();
     public DbSet<OutboxMessage> Outbox => Set<OutboxMessage>();
     public DbSet<AccountToken> AccountTokens => Set<AccountToken>();
@@ -182,6 +188,14 @@ public sealed class HtnDbContext(DbContextOptions<HtnDbContext> options)
             // A supplier rating is fully append-only: no update, no delete, ever.
             if (entry.State is EntityState.Modified or EntityState.Deleted && entry.Entity is SupplierRating)
                 throw new InvalidOperationException("SupplierRating is append-only.");
+            // Merch items/variants are deactivated with a reason, never deleted. A sale and its lines are fully
+            // append-only, like SupplierRating/InvitationEvent: permanent the moment they are written.
+            if (entry.State == EntityState.Deleted && entry.Entity is MerchItem or MerchVariant)
+                throw new InvalidOperationException($"{entry.Entity.GetType().Name} rows are never deleted.");
+            if (entry.State is EntityState.Modified or EntityState.Deleted && entry.Entity is MerchSale or MerchSaleLine)
+                throw new InvalidOperationException($"{entry.Entity.GetType().Name} is append-only.");
+            if (entry.State == EntityState.Deleted && entry.Entity is Htn.Domain.Merch.EventMerchSettings)
+                throw new InvalidOperationException("EventMerchSettings rows are never deleted.");
             if (entry.State == EntityState.Deleted && entry.Entity is Position or PositionAssignment or PaymentAccount or StoredFile or Domain.Settings.OrgSettings
                     or Event or TicketType or Voucher or Registration or Attendee or Payment or PaymentProof
                     or Committee or CommitteeMember or EventVolunteer

@@ -59,7 +59,7 @@ Volunteers have no login: they are per-event records managed by the board or the
 | `Suppliers.View` (contacts, docs, reviews) | ✓ | ✓ | — | — |
 | `Suppliers.Rate` | ✓ | own committee's suppliers | — | — |
 | `Merch.Manage` (stock, discounts) | ✓ | — | — | — |
-| `Merch.Sell` (event POS) | ✓ | own committee | if assigned | if assigned |
+| `Merch.Sell` (event POS) | ✓ | own committee | if assigned¹ | if assigned¹ |
 | `PopUps.Manage` (create / run pop-up) | ✓ | if committee allowed | — | — |
 | `PopUps.Sell` | ✓ | if committee allowed | if on store team | if on store team |
 | `Finance.View` (may know finance exists) | ✓ | — | finance assistant only | — |
@@ -87,3 +87,7 @@ Volunteers have no login: they are per-event records managed by the board or the
   `self_approval`), nor decide an expense request they filed. The CFO never needs to file one — holding `Finance.Post`
   they post the expense directly — so this never deadlocks.
 - Prices, TIN and bank fields are removed from responses for non-board users. Do this at the DTO projection, not in the UI.
+- ¹ `Merch.Sell`'s "if assigned" row for a plain goon/apprentice is **not implemented in Phase 8A** — there is no
+  per-event assignment concept for the main event's POS yet (only `PopUps.Sell`'s `StoreTeam(popUpId)` exists, added
+  in 8C). Phase 8A's `Merch.Sell` is board-or-committee-lead only; assigning ordinary staff to run the event POS is
+  deferred.

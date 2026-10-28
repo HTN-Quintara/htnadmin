@@ -31,6 +31,13 @@ public enum CommitteeAccess
     /// <see cref="CommitteeScope"/> once it has loaded the row — see <c>EventSuppliersEndpoints.Rate</c>.
     /// </summary>
     SuppliersRate,
+
+    /// <summary>
+    /// <c>Merch.Sell</c>: board, or any committee lead of that event — the same "manage"-shaped check as
+    /// <see cref="ProgramsManage"/> against an <see cref="EventScope"/>, but for any committee rather than one named
+    /// Programs. The coarse, resource-less route gate is "leads something, anywhere", same as the others.
+    /// </summary>
+    MerchSell,
 }
 
 public sealed class CommitteeScopedRequirement(CommitteeAccess access) : IAuthorizationRequirement
@@ -91,7 +98,7 @@ public sealed class CommitteeScopedHandler(ICommitteeContext committees, ITaskSc
             return;
         }
         var programs = requirement.Access is CommitteeAccess.ProgramsManage;
-        var manage = requirement.Access is CommitteeAccess.ManageMembers or CommitteeAccess.TasksManage or CommitteeAccess.SuppliersRate;
+        var manage = requirement.Access is CommitteeAccess.ManageMembers or CommitteeAccess.TasksManage or CommitteeAccess.SuppliersRate or CommitteeAccess.MerchSell;
         var granted = context.Resource switch
         {
             CommitteeScope c => manage

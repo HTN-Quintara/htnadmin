@@ -42,6 +42,7 @@ export function EventLayout() {
   const canLeads = useCan(Policies.LeadsManage)
   const canInvitations = useCan(Policies.InvitationsManage)
   const canSuppliers = useCan(Policies.SuppliersView)
+  const canMerch = useCan(Policies.MerchSell)
 
   if (query.isPending) {
     return (
@@ -106,6 +107,7 @@ export function EventLayout() {
     ...(canLeads ? [{ to: `${base}/leads`, label: 'Leads' }] : []),
     ...(canInvitations ? [{ to: `${base}/invitations`, label: 'Invitations' }] : []),
     ...(canSuppliers ? [{ to: `${base}/suppliers`, label: 'Suppliers' }] : []),
+    ...(canMerch ? [{ to: `${base}/merch`, label: 'Merch' }] : []),
   ]
 
   return (

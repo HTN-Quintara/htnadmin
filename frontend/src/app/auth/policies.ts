@@ -50,6 +50,10 @@ export const Policies = {
   SuppliersManage: 'Suppliers.Manage',
   /** Resource-scoped: board, or the lead of the hire's owning committee, once the event has ended. */
   SuppliersRate: 'Suppliers.Rate',
+  /** Board only: merch catalog, variants and per-event discounts. */
+  MerchManage: 'Merch.Manage',
+  /** Resource-scoped: board, or any committee lead of that event: the merch dashboard and POS. */
+  MerchSell: 'Merch.Sell',
 } as const
 
 export type Policy = (typeof Policies)[keyof typeof Policies] | (string & {})

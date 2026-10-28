@@ -62,6 +62,10 @@ export const routes: RouteObject[] = [
                   { path: '/events/:eventId/check-in/desk', lazy: async () => ({ Component: (await import('@/features/checkin/DeskPage')).DeskPage }) },
                 ],
               },
+              {
+                element: <RequirePolicy policy={Policies.MerchSell} />,
+                children: [{ path: '/events/:eventId/pos', lazy: async () => ({ Component: (await import('@/features/merch/PosPage')).PosPage }) }],
+              },
             ],
           },
           {
@@ -173,6 +177,11 @@ export const routes: RouteObject[] = [
                         path: 'suppliers',
                         element: <RequirePolicy policy={Policies.SuppliersView} />,
                         children: [{ index: true, lazy: async () => ({ Component: (await import('@/features/suppliers/EventSuppliersPage')).EventSuppliersPage }) }],
+                      },
+                      {
+                        path: 'merch',
+                        element: <RequirePolicy policy={Policies.MerchSell} />,
+                        children: [{ index: true, lazy: async () => ({ Component: (await import('@/features/merch/MerchPage')).MerchPage }) }],
                       },
                       {
                         path: 'check-in',

@@ -64,7 +64,7 @@ const codeMessages: Record<string, string> = {
   threshold_not_reached: "This partner hasn't reached the threshold yet.",
   already_tagged: 'That organization is already a partner.',
   // Directory (frame 18).
-  already_deactivated: 'This organization is already deactivated.',
+  already_deactivated: 'This is already deactivated.',
   // Invitations (frame 19).
   contact_not_verified: "The organization's contact must be verified before sending.",
   already_sent: 'This invitation has already been sent.',
@@ -136,6 +136,11 @@ const codeMessages: Record<string, string> = {
   committee_inactive: 'That committee is no longer active. Move the task to an active committee.',
   unsupported_type: 'Attach a PNG, JPG or PDF file.',
   file_too_large: 'This file is larger than 5 MB. Attach a smaller file.',
+  // Merch & POS (frame 20/21).
+  duplicate_label: 'A variant with that label already exists for this item.',
+  insufficient_stock: 'Not enough stock left. Reload and try again.',
+  unknown_code: "That code isn't a valid ticket for this event.",
+  no_buyer: 'Identify the buyer before completing the sale.',
 }
 
 /** Message for a known API error code, if any. */

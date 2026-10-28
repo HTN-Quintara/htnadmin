@@ -20,6 +20,9 @@ internal sealed class OrgSettingsConfiguration : IEntityTypeConfiguration<OrgSet
             t.HasCheckConstraint("ck_org_settings_brand_color", "brand_color ~ '^#[0-9A-Fa-f]{6}$'");
             t.HasCheckConstraint("ck_org_settings_payment_deadline",
                 $"payment_deadline_hours BETWEEN {OrgSettings.MinPaymentDeadlineHours} AND {OrgSettings.MaxPaymentDeadlineHours}");
+            t.HasCheckConstraint("ck_org_settings_merch_discounts",
+                "goon_merch_discount_pct BETWEEN 0 AND 100 AND apprentice_merch_discount_pct BETWEEN 0 AND 100 " +
+                "AND member_merch_discount_pct BETWEEN 0 AND 100 AND board_merch_discount_pct BETWEEN 0 AND 100");
         });
         b.HasKey(s => s.Id);
         b.Property(s => s.Id).ValueGeneratedNever();
@@ -28,6 +31,12 @@ internal sealed class OrgSettingsConfiguration : IEntityTypeConfiguration<OrgSet
         b.Property(s => s.CollabMultiplier).HasPrecision(3, 1);
         b.Property(s => s.AssistantMultiplier).HasPrecision(3, 1);
         b.Property(s => s.BrandColor).HasMaxLength(7).IsFixedLength().IsRequired();
+        // Phase 8A: added to the existing table, so each gets the agreed default as its column default too, backfilling
+        // the already-seeded singleton row instead of leaving it at 0.
+        b.Property(s => s.GoonMerchDiscountPct).HasDefaultValue(20);
+        b.Property(s => s.ApprenticeMerchDiscountPct).HasDefaultValue(15);
+        b.Property(s => s.MemberMerchDiscountPct).HasDefaultValue(10);
+        b.Property(s => s.BoardMerchDiscountPct).HasDefaultValue(0);
         b.HasOne<StoredFile>().WithMany().HasForeignKey(s => s.LogoLightFileId).OnDelete(DeleteBehavior.Restrict);
         b.HasOne<StoredFile>().WithMany().HasForeignKey(s => s.LogoDarkFileId).OnDelete(DeleteBehavior.Restrict);
 

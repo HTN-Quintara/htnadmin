@@ -37,6 +37,16 @@ public sealed class OrgSettings
     public Guid? LogoDarkFileId { get; private set; }
     public int PaymentDeadlineHours { get; private set; }
 
+    /// <summary>
+    /// Org-wide merch discount defaults (Phase 8A), copied into a fresh <see cref="Htn.Domain.Merch.EventMerchSettings"/>
+    /// row the first time an event's discounts are read. Editing these never rewrites an event that already has its
+    /// own row — see <see cref="Htn.Domain.Merch.EventMerchSettings"/>.
+    /// </summary>
+    public int GoonMerchDiscountPct { get; private set; }
+    public int ApprenticeMerchDiscountPct { get; private set; }
+    public int MemberMerchDiscountPct { get; private set; }
+    public int BoardMerchDiscountPct { get; private set; }
+
     public DateTimeOffset? UpdatedAt { get; private set; }
     public Guid? UpdatedById { get; private set; }
 
@@ -54,6 +64,10 @@ public sealed class OrgSettings
         RequireTaskApproval = true,
         BrandColor = DefaultBrandColor,
         PaymentDeadlineHours = 48,
+        GoonMerchDiscountPct = 20,
+        ApprenticeMerchDiscountPct = 15,
+        MemberMerchDiscountPct = 10,
+        BoardMerchDiscountPct = 0,
     };
 
     public static bool IsValidMultiplier(decimal value) =>
@@ -78,6 +92,18 @@ public sealed class OrgSettings
         PresetLarge = large;
         PresetXl = xl;
         RequireTaskApproval = requireTaskApproval;
+        Touch(at, actorId);
+    }
+
+    /// <summary>The org-wide merch discount defaults, each 0-100. See the remarks on the properties.</summary>
+    public void UpdateMerchDiscounts(int goonPct, int apprenticePct, int memberPct, int boardPct, DateTimeOffset at, Guid? actorId)
+    {
+        foreach (var (value, name) in new[] { (goonPct, "Goon"), (apprenticePct, "Apprentice"), (memberPct, "Member"), (boardPct, "Board") })
+            if (value is < 0 or > 100) throw new DomainException($"{name} discount must be between 0 and 100.");
+        GoonMerchDiscountPct = goonPct;
+        ApprenticeMerchDiscountPct = apprenticePct;
+        MemberMerchDiscountPct = memberPct;
+        BoardMerchDiscountPct = boardPct;
         Touch(at, actorId);
     }
 

@@ -1,5 +1,6 @@
 using Htn.Domain.Common;
 using Htn.Domain.Finance;
+using Htn.Domain.Merch;
 using Htn.Domain.Registrations;
 using Htn.Domain.Sponsors;
 using Htn.Infrastructure.Audit;
@@ -183,6 +184,40 @@ public sealed class AutoPost(HtnDbContext db, IAuditLog audit)
         audit.Record(actorId, FinanceAuditActions.LedgerContra, nameof(LedgerEntry), contra.Id.ToString(),
             after: new { contra.Amount, contra.EntryDate, offsets = entry.Id }, reason: reason);
         return (contra, false);
+    }
+
+    /// <summary>
+    /// Posts a merch sale's total to its event fund under <c>Merch sales</c> (<see cref="LedgerCategories.MerchId"/>).
+    /// Called in the same transaction as the sale itself (<c>MerchEndpoints.Sell</c>), exactly like
+    /// <see cref="TicketPaymentAsync"/>: one live entry per sale forever (<c>ux_ledger_entries_source</c>), so a
+    /// retried request is a no-op. Returns null for a zero-total sale (100% discount) — nothing moved.
+    /// </summary>
+    public async Task<LedgerEntry?> MerchSaleAsync(MerchSale sale, Guid actorId, DateTimeOffset at, CancellationToken ct)
+    {
+        ArgumentNullException.ThrowIfNull(sale);
+        if (sale.Total <= 0m) return null;
+        if (await ExistsAsync(LedgerSource.MerchSale, sale.Id, ct)) return null;
+
+        var fund = await FinanceOps.EventFundAsync(db, sale.EventId, at, ct);
+        var entry = LedgerEntry.Posted(
+            new NewLedgerEntry(
+                fund.Id,
+                null,
+                LedgerCategories.MerchId,
+                await PostableDateAsync(ManilaTime.ManilaDate(at), ct),
+                LedgerDirection.In,
+                sale.Total,
+                null,
+                $"Merch sale · {sale.BuyerNameSnapshot}",
+                null,
+                LedgerSource.MerchSale,
+                sale.Id),
+            actorId,
+            at);
+        db.LedgerEntries.Add(entry);
+        audit.Record(actorId, FinanceAuditActions.LedgerAutoPost, nameof(LedgerEntry), entry.Id.ToString(),
+            after: new { entry.FundId, entry.Amount, entry.EntryDate, source = entry.Source.ToString(), saleId = sale.Id });
+        return entry;
     }
 
     /// <summary>Whether a live automatic entry already exists for this source row (e.g. a contra left the slot taken).</summary>

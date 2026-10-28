@@ -25,6 +25,7 @@ using Htn.Api.Features.Sponsors;
 using Htn.Api.Features.Directory;
 using Htn.Api.Features.Invitations;
 using Htn.Api.Features.Suppliers;
+using Htn.Api.Features.Merch;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.HttpOverrides;
@@ -197,6 +198,7 @@ app.MapDirectory();
 app.MapInvitations();
 app.MapSuppliers();
 app.MapEventSuppliers();
+app.MapMerch();
 
 var migrate = app.Configuration.GetValue("Database:MigrateOnStartup", app.Environment.IsDevelopment());
 if (migrate)

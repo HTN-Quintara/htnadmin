@@ -41,6 +41,8 @@ export const boardMe: Me = {
     'Suppliers.View',
     'Suppliers.Manage',
     'Suppliers.Rate',
+    'Merch.Manage',
+    'Merch.Sell',
   ],
   preferences: { mode: 'system', textSize: 'default', density: 'comfortable' },
 }
@@ -116,7 +118,7 @@ export const committeeLeadMe: Me = {
   firstName: 'Carlo',
   lastName: 'Villanueva',
   email: 'carlo@hackthenorth.ph',
-  policies: [...goonMe.policies, 'Directory.View', 'Suppliers.View', 'Suppliers.Rate'],
+  policies: [...goonMe.policies, 'Directory.View', 'Suppliers.View', 'Suppliers.Rate', 'Merch.Sell'],
 }
 
 /** The finance assistant: a goon who may add ledger entries, which wait for the CFO. */

@@ -133,12 +133,20 @@ public static class Policies
         auth.AddPolicy(SuppliersRate, p => p.RequireAuthenticatedUser().RequireRole(Roles.Board, Roles.Goon)
             .AddRequirements(new CommitteeScopedRequirement(CommitteeAccess.SuppliersRate)));
 
+        // Merch.Manage (Phase 8A): board only, like Suppliers.Manage — stock, items, discounts.
+        auth.AddPolicy(MerchManage, p => p.RequireAuthenticatedUser().RequireRole(Roles.Board));
+        // Merch.Sell (Phase 8A): board, or any committee lead of that event (the event's POS). Resource-scoped like
+        // Speakers.Manage/ProgramsManage, but for any committee rather than one named one.
+        auth.AddPolicy(MerchSell, p => p.RequireAuthenticatedUser().RequireRole(Roles.Board, Roles.Goon)
+            .AddRequirements(new CommitteeScopedRequirement(CommitteeAccess.MerchSell)));
+
         string[] implemented =
         [
             PeopleView, PeopleManage, SettingsPersonal, EventsView, CheckInScan,
             FinanceView, FinanceRequest, FinancePost, FinanceApprove,
             CommitteesManageMembers, TasksManage, TasksWork, TasksViewBoard, LeaderboardView, SpeakersManage,
             DirectoryManage, DirectoryView, InvitationsManage, SuppliersManage, SuppliersView, SuppliersRate,
+            MerchManage, MerchSell,
         ];
         foreach (var name in All.Except(implemented))
             auth.AddPolicy(name, p => p.RequireAuthenticatedUser().RequireRole(Roles.Board));
