@@ -4,14 +4,8 @@ import { RequirePolicy } from './auth/RequirePolicy'
 import { Policies } from './auth/policies'
 import { AppLayout } from './layouts/AppLayout'
 import { KioskLayout } from './layouts/KioskLayout'
-import { ComingSoonPage } from './pages/ComingSoonPage'
 import { NotFoundPage } from './pages/NotFoundPage'
 import { RouteErrorPage } from './pages/RouteErrorPage'
-
-const comingSoon = (path: string, title: string, description: string): RouteObject => ({
-  path,
-  element: <ComingSoonPage title={title} description={description} />,
-})
 
 export const routes: RouteObject[] = [
   {
@@ -65,6 +59,10 @@ export const routes: RouteObject[] = [
               {
                 element: <RequirePolicy policy={Policies.MerchSell} />,
                 children: [{ path: '/events/:eventId/pos', lazy: async () => ({ Component: (await import('@/features/merch/PosPage')).PosPage }) }],
+              },
+              {
+                element: <RequirePolicy policy={Policies.PopUpsSell} />,
+                children: [{ path: '/pop-ups/:id/pos', lazy: async () => ({ Component: (await import('@/features/merch/PopUpPosPage')).PopUpPosPage }) }],
               },
             ],
           },
@@ -210,7 +208,11 @@ export const routes: RouteObject[] = [
                 element: <RequirePolicy policy={Policies.SuppliersRate} />,
                 children: [{ index: true, lazy: async () => ({ Component: (await import('@/features/suppliers/RateSuppliersPage')).RateSuppliersPage }) }],
               },
-              comingSoon('/store', 'Merch store', 'Leftover stock and pop-up stores.'),
+              {
+                path: '/store',
+                element: <RequirePolicy policy={Policies.PopUpsSell} />,
+                children: [{ index: true, lazy: async () => ({ Component: (await import('@/features/merch/MerchStorePage')).MerchStorePage }) }],
+              },
               {
                 // Board only, plus the one finance assistant. The API answers 404 to everyone else, so the module's
                 // existence is not revealed; this guard only saves them a pointless round trip.

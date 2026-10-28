@@ -1,6 +1,7 @@
 using Htn.Domain.Events;
 using Htn.Domain.Merch;
 using Htn.Domain.Organization;
+using Htn.Domain.PopUps;
 using Htn.Domain.Registrations;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
@@ -32,7 +33,11 @@ internal sealed class MerchItemConfiguration : IEntityTypeConfiguration<MerchIte
         b.Property<uint>(EventConfiguration.RowVersion).HasColumnName("xmin").HasColumnType("xid").IsRowVersion();
         b.Ignore(x => x.IsActive);
         b.HasIndex(x => x.EventId).HasDatabaseName("ix_merch_items_event");
-        b.HasOne<Event>().WithMany().HasForeignKey(x => x.EventId).OnDelete(DeleteBehavior.Restrict);
+        // Phase 8C: EventId is nullable (MoveToStore unlinks an item into the Merch store's leftover pool), and
+        // LeftoverSourceEventId is a frozen "From" label with its own FK to the same table — a separate
+        // relationship, since the two columns serve different purposes.
+        b.HasOne<Event>().WithMany().HasForeignKey(x => x.EventId).OnDelete(DeleteBehavior.Restrict).IsRequired(false);
+        b.HasOne<Event>().WithMany().HasForeignKey(x => x.LeftoverSourceEventId).OnDelete(DeleteBehavior.Restrict).IsRequired(false);
     }
 }
 
@@ -95,6 +100,8 @@ internal sealed class MerchSaleConfiguration : IEntityTypeConfiguration<MerchSal
                 "AND total = subtotal - discount_amount + COALESCE(membership_fee_amount, 0) " +
                 "AND (membership_fee_included = FALSE) = (membership_fee_amount IS NULL) " +
                 "AND (membership_fee_amount IS NULL OR membership_fee_amount >= 0)");
+            // Phase 8C: a sale is either an event POS sale or a pop-up sale, never both, never neither.
+            t.HasCheckConstraint("ck_merch_sales_one_scope", "(event_id IS NOT NULL) <> (pop_up_id IS NOT NULL)");
         });
         b.HasKey(x => x.Id);
         b.Property(x => x.Id).ValueGeneratedNever();
@@ -103,11 +110,19 @@ internal sealed class MerchSaleConfiguration : IEntityTypeConfiguration<MerchSal
         b.Property(x => x.Method).HasConversion<string>().HasMaxLength(8);
         b.Property(x => x.Station).HasMaxLength(MerchSale.StationMaxLength);
         b.HasIndex(x => x.EventId).HasDatabaseName("ix_merch_sales_event");
+        b.HasIndex(x => x.PopUpId).HasDatabaseName("ix_merch_sales_pop_up");
         b.HasIndex(x => x.SoldAt).HasDatabaseName("ix_merch_sales_sold_at");
         // The POS client's idempotency key: a retry of the same sale attempt can never create a second row for
-        // the same event, but the same key can be reused across different events.
-        b.HasIndex(x => new { x.EventId, x.ClientRequestId }).IsUnique().HasDatabaseName("ux_merch_sales_event_client_request_id");
-        b.HasOne<Event>().WithMany().HasForeignKey(x => x.EventId).OnDelete(DeleteBehavior.Restrict);
+        // the same event, but the same key can be reused across different events. Phase 8C adds the pop-up twin —
+        // one event sale and one pop-up sale could in principle share a ClientRequestId GUID (astronomically
+        // unlikely, but the two partial indexes are independent either way, each scoped to rows where that column
+        // is set).
+        b.HasIndex(x => new { x.EventId, x.ClientRequestId }).IsUnique().HasDatabaseName("ux_merch_sales_event_client_request_id")
+            .HasFilter("event_id IS NOT NULL");
+        b.HasIndex(x => new { x.PopUpId, x.ClientRequestId }).IsUnique().HasDatabaseName("ux_merch_sales_pop_up_client_request_id")
+            .HasFilter("pop_up_id IS NOT NULL");
+        b.HasOne<Event>().WithMany().HasForeignKey(x => x.EventId).OnDelete(DeleteBehavior.Restrict).IsRequired(false);
+        b.HasOne<PopUpStore>().WithMany().HasForeignKey(x => x.PopUpId).OnDelete(DeleteBehavior.Restrict).IsRequired(false);
         b.HasOne<Person>().WithMany().HasForeignKey(x => x.BuyerPersonId).OnDelete(DeleteBehavior.Restrict);
         b.HasOne<Attendee>().WithMany().HasForeignKey(x => x.BuyerAttendeeId).OnDelete(DeleteBehavior.Restrict);
     }

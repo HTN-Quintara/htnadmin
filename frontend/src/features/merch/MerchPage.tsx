@@ -14,6 +14,7 @@ import { useMerchDashboard, useMerchDiscounts } from './api'
 import { DiscountsPanel } from './components/DiscountsPanel'
 import { InventoryTable } from './components/InventoryTable'
 import { ItemFormDialog } from './components/ItemFormDialog'
+import { MoveToStoreDialog } from './components/MoveToStoreDialog'
 import { SalesLogTable } from './components/SalesLogTable'
 
 /** Merch event tab (canvas frame 20): KPIs, inventory, discounts aside, sales log. */
@@ -22,6 +23,7 @@ export function MerchPage() {
   const canManage = useCan(Policies.MerchManage)
   const dashboard = useMerchDashboard(eventId)
   const [adding, setAdding] = useState(false)
+  const [moving, setMoving] = useState(false)
 
   if (dashboard.isPending) {
     return (
@@ -55,6 +57,11 @@ export function MerchPage() {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="text-sm text-gray-600 dark:text-gray-300">Inventory, discounts and sales for this event's merch booth.</p>
         <div className="flex items-center gap-2">
+          {canManage ? (
+            <Button variant="secondary" onClick={() => setMoving(true)}>
+              Move leftovers to store
+            </Button>
+          ) : null}
           {canManage ? <Button onClick={() => setAdding(true)}>+ Item</Button> : null}
           <Link to={`/events/${encodeURIComponent(eventId)}/pos`} className={buttonClass('primary')}>
             Open POS
@@ -85,6 +92,7 @@ export function MerchPage() {
       <SalesLogTable eventId={eventId} sales={sales} canManage={canManage} />
 
       {canManage ? <ItemFormDialog open={adding} onClose={() => setAdding(false)} eventId={eventId} /> : null}
+      {canManage && moving ? <MoveToStoreDialog eventId={eventId} items={items} onClose={() => setMoving(false)} /> : null}
     </div>
   )
 }

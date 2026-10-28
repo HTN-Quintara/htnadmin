@@ -26,6 +26,7 @@ using Htn.Api.Features.Directory;
 using Htn.Api.Features.Invitations;
 using Htn.Api.Features.Suppliers;
 using Htn.Api.Features.Merch;
+using Htn.Api.Features.PopUps;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.HttpOverrides;
@@ -138,6 +139,10 @@ builder.Services.AddScoped<IAuthorizationHandler, CommitteeScopedHandler>();
 // Task-scoped authorization and the per-committee open-task counts (slice 4B).
 builder.Services.AddScoped<ITaskScopeResolver, TaskScopeResolver>();
 builder.Services.AddScoped<ICommitteeOpenTasks, CommitteeOpenTasks>();
+// Pop-up-scoped authorization (Phase 8C): PopUps.Manage/Sell's dedicated two-layer handler, mirroring the
+// committee-scoped kit above but with a third "on the store team" branch Sell alone admits.
+builder.Services.AddScoped<IPopUpTeamContext, PopUpTeamContext>();
+builder.Services.AddScoped<IAuthorizationHandler, PopUpScopedHandler>();
 builder.Services.AddScoped<MeService>();
 builder.Services.AddScoped<AccountProvisioning>();
 builder.Services.AddScoped<Checkout>();
@@ -199,6 +204,7 @@ app.MapInvitations();
 app.MapSuppliers();
 app.MapEventSuppliers();
 app.MapMerch();
+app.MapPopUps();
 
 var migrate = app.Configuration.GetValue("Database:MigrateOnStartup", app.Environment.IsDevelopment());
 if (migrate)

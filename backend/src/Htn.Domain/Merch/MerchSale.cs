@@ -22,13 +22,23 @@ public sealed class MerchSale
     private MerchSale() { }
 
     public Guid Id { get; private set; }
-    public Guid EventId { get; private set; }
+
+    /// <summary>The event this sale was made at, or null for a pop-up sale (<see cref="PopUpId"/> set instead).</summary>
+    public Guid? EventId { get; private set; }
+
+    /// <summary>
+    /// Phase 8C: the pop-up store this sale was made at, or null for an ordinary event POS sale. Exactly one of
+    /// <see cref="EventId"/>/<see cref="PopUpId"/> is ever set — enforced below and again at the database
+    /// (<c>ck_merch_sales_one_scope</c>).
+    /// </summary>
+    public Guid? PopUpId { get; private set; }
 
     /// <summary>
     /// A GUID the POS client generates fresh per distinct sale attempt and holds in its own state, resending the
     /// <i>same</i> value on any retry of that same attempt (a network retry, a double-tap on flaky wifi). Unique
-    /// per <see cref="EventId"/> so a retry of the same attempt can never create a second <see cref="MerchSale"/>
-    /// row, without colliding across different events. Not public-facing; purely a dedup key.
+    /// per <see cref="EventId"/> (or per <see cref="PopUpId"/>) so a retry of the same attempt can never create a
+    /// second <see cref="MerchSale"/> row, without colliding across different events/pop-ups. Not public-facing;
+    /// purely a dedup key.
     /// </summary>
     public Guid ClientRequestId { get; private set; }
 
@@ -66,11 +76,12 @@ public sealed class MerchSale
     /// is added to <see cref="Total"/> on top of the discounted merch subtotal, undiscounted.
     /// </summary>
     public static (MerchSale Sale, List<MerchSaleLine> Lines) Create(
-        Guid eventId, Guid clientRequestId, Guid? buyerPersonId, Guid? buyerAttendeeId, string buyerNameSnapshot, PersonLevel? buyerLevelSnapshot,
+        Guid? eventId, Guid? popUpId, Guid clientRequestId, Guid? buyerPersonId, Guid? buyerAttendeeId, string buyerNameSnapshot, PersonLevel? buyerLevelSnapshot,
         IReadOnlyList<NewMerchSaleLine> lineInputs, int discountPct, MerchSaleMethod method, Guid cashierId, string? station,
         bool membershipFeeIncluded, decimal? membershipFeeAmount, DateTimeOffset at)
     {
-        if (eventId == Guid.Empty) throw new DomainException("An event is required.");
+        if ((eventId is null) == (popUpId is null))
+            throw new DomainException("A sale belongs to exactly one of an event or a pop-up store.");
         if (clientRequestId == Guid.Empty) throw new DomainException("A client request id is required.");
         if ((lineInputs is null || lineInputs.Count == 0) && !membershipFeeIncluded)
             throw new DomainException("A sale needs at least one line.");
@@ -95,6 +106,7 @@ public sealed class MerchSale
         {
             Id = saleId,
             EventId = eventId,
+            PopUpId = popUpId,
             ClientRequestId = clientRequestId,
             BuyerPersonId = buyerPersonId,
             BuyerAttendeeId = buyerAttendeeId,

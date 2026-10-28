@@ -34,6 +34,11 @@ public sealed class CommitteeLeadRequestValidator : AbstractValidator<CommitteeL
     }
 }
 
+public sealed class CommitteePopUpsAllowedRequestValidator : AbstractValidator<CommitteePopUpsAllowedRequest>
+{
+    public CommitteePopUpsAllowedRequestValidator() => RuleFor(r => r.Allowed).NotNull();
+}
+
 public sealed class CommitteeReasonRequestValidator : AbstractValidator<CommitteeReasonRequest>
 {
     public CommitteeReasonRequestValidator()

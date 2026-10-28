@@ -140,7 +140,7 @@ public class MerchSaleTests
     public void Create_computes_subtotal_discount_and_total()
     {
         var (sale, lines) = Htn.Domain.Merch.MerchSale.Create(
-            EventId, ClientRequestId, null, null, "Walk-in", null,
+            EventId, null, ClientRequestId, null, null, "Walk-in", null,
             [new NewMerchSaleLine(ItemId, VariantId, 2, 350m)], discountPct: 20, MerchSaleMethod.Cash, Actor, "Booth A",
             membershipFeeIncluded: false, membershipFeeAmount: null, Now);
 
@@ -156,7 +156,7 @@ public class MerchSaleTests
     public void A_goon_buyer_gets_the_snapshotted_level()
     {
         var (sale, _) = Htn.Domain.Merch.MerchSale.Create(
-            EventId, ClientRequestId, Guid.CreateVersion7(Now), null, "Jo Goon", PersonLevel.Goon,
+            EventId, null, ClientRequestId, Guid.CreateVersion7(Now), null, "Jo Goon", PersonLevel.Goon,
             [new NewMerchSaleLine(ItemId, VariantId, 1, 100m)], discountPct: 20, MerchSaleMethod.GCash, Actor, null,
             membershipFeeIncluded: false, membershipFeeAmount: null, Now);
         Assert.Equal(PersonLevel.Goon, sale.BuyerLevelSnapshot);
@@ -166,7 +166,7 @@ public class MerchSaleTests
     public void Create_rejects_an_empty_line_list()
     {
         Assert.Throws<DomainException>(() => Htn.Domain.Merch.MerchSale.Create(
-            EventId, ClientRequestId, null, null, "Walk-in", null, [], 0, MerchSaleMethod.Cash, Actor, null,
+            EventId, null, ClientRequestId, null, null, "Walk-in", null, [], 0, MerchSaleMethod.Cash, Actor, null,
             membershipFeeIncluded: false, membershipFeeAmount: null, Now));
     }
 
@@ -174,7 +174,7 @@ public class MerchSaleTests
     public void Create_rejects_a_discount_outside_0_to_100()
     {
         Assert.Throws<DomainException>(() => Htn.Domain.Merch.MerchSale.Create(
-            EventId, ClientRequestId, null, null, "Walk-in", null,
+            EventId, null, ClientRequestId, null, null, "Walk-in", null,
             [new NewMerchSaleLine(ItemId, VariantId, 1, 100m)], 101, MerchSaleMethod.Cash, Actor, null,
             membershipFeeIncluded: false, membershipFeeAmount: null, Now));
     }
@@ -183,7 +183,7 @@ public class MerchSaleTests
     public void Create_rejects_an_empty_client_request_id()
     {
         Assert.Throws<DomainException>(() => Htn.Domain.Merch.MerchSale.Create(
-            EventId, Guid.Empty, null, null, "Walk-in", null,
+            EventId, null, Guid.Empty, null, null, "Walk-in", null,
             [new NewMerchSaleLine(ItemId, VariantId, 1, 100m)], 0, MerchSaleMethod.Cash, Actor, null,
             membershipFeeIncluded: false, membershipFeeAmount: null, Now));
     }

@@ -68,7 +68,7 @@ internal static class CommitteeViews
                         ? new CommitteeMemberDto(p.Id, p.FirstName, p.LastName, p.Level, m.JoinedAt)
                         : null)
                     .OfType<CommitteeMemberDto>().ToList(),
-                cardVolunteers));
+                cardVolunteers, committee.PopUpsAllowed));
         }
 
         // The pool: active goons and apprentices with a login who are on no committee of this event (board members are
@@ -107,7 +107,7 @@ internal static class CommitteeViews
                     ? new CommitteeMemberDto(p.Id, p.FirstName, p.LastName, p.Level, m.JoinedAt)
                     : null)
                 .OfType<CommitteeMemberDto>().ToList(),
-            cardVolunteers);
+            cardVolunteers, committee.PopUpsAllowed);
     }
 
     /// <summary>Volunteer contact details are personal data: only a manager of that volunteer sees them.</summary>

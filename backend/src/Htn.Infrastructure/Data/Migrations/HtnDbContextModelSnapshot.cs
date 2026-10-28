@@ -383,6 +383,10 @@ namespace Htn.Infrastructure.Data.Migrations
                         .HasColumnType("character varying(60)")
                         .HasColumnName("name");
 
+                    b.Property<bool>("PopUpsAllowed")
+                        .HasColumnType("boolean")
+                        .HasColumnName("pop_ups_allowed");
+
                     b.Property<uint>("RowVersion")
                         .IsConcurrencyToken()
                         .ValueGeneratedOnAddOrUpdate()
@@ -2419,9 +2423,13 @@ namespace Htn.Infrastructure.Data.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("deactivated_by_id");
 
-                    b.Property<Guid>("EventId")
+                    b.Property<Guid?>("EventId")
                         .HasColumnType("uuid")
                         .HasColumnName("event_id");
+
+                    b.Property<Guid?>("LeftoverSourceEventId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("leftover_source_event_id");
 
                     b.Property<string>("Name")
                         .IsRequired()
@@ -2459,6 +2467,9 @@ namespace Htn.Infrastructure.Data.Migrations
 
                     b.HasIndex("EventId")
                         .HasDatabaseName("ix_merch_items_event");
+
+                    b.HasIndex("LeftoverSourceEventId")
+                        .HasDatabaseName("ix_merch_items_leftover_source_event_id");
 
                     b.ToTable("merch_items", null, t =>
                         {
@@ -2512,7 +2523,7 @@ namespace Htn.Infrastructure.Data.Migrations
                         .HasColumnType("integer")
                         .HasColumnName("discount_pct");
 
-                    b.Property<Guid>("EventId")
+                    b.Property<Guid?>("EventId")
                         .HasColumnType("uuid")
                         .HasColumnName("event_id");
 
@@ -2530,6 +2541,10 @@ namespace Htn.Infrastructure.Data.Migrations
                         .HasMaxLength(8)
                         .HasColumnType("character varying(8)")
                         .HasColumnName("method");
+
+                    b.Property<Guid?>("PopUpId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("pop_up_id");
 
                     b.Property<DateTimeOffset>("SoldAt")
                         .HasColumnType("timestamp with time zone")
@@ -2562,12 +2577,21 @@ namespace Htn.Infrastructure.Data.Migrations
                     b.HasIndex("EventId")
                         .HasDatabaseName("ix_merch_sales_event");
 
+                    b.HasIndex("PopUpId")
+                        .HasDatabaseName("ix_merch_sales_pop_up");
+
                     b.HasIndex("SoldAt")
                         .HasDatabaseName("ix_merch_sales_sold_at");
 
                     b.HasIndex("EventId", "ClientRequestId")
                         .IsUnique()
-                        .HasDatabaseName("ux_merch_sales_event_client_request_id");
+                        .HasDatabaseName("ux_merch_sales_event_client_request_id")
+                        .HasFilter("event_id IS NOT NULL");
+
+                    b.HasIndex("PopUpId", "ClientRequestId")
+                        .IsUnique()
+                        .HasDatabaseName("ux_merch_sales_pop_up_client_request_id")
+                        .HasFilter("pop_up_id IS NOT NULL");
 
                     b.ToTable("merch_sales", null, t =>
                         {
@@ -2578,6 +2602,8 @@ namespace Htn.Infrastructure.Data.Migrations
                             t.HasCheckConstraint("ck_merch_sales_method", "method IN ('Cash', 'GCash', 'Bank')");
 
                             t.HasCheckConstraint("ck_merch_sales_money", "subtotal >= 0 AND discount_amount >= 0 AND total >= 0 AND total = subtotal - discount_amount + COALESCE(membership_fee_amount, 0) AND (membership_fee_included = FALSE) = (membership_fee_amount IS NULL) AND (membership_fee_amount IS NULL OR membership_fee_amount >= 0)");
+
+                            t.HasCheckConstraint("ck_merch_sales_one_scope", "(event_id IS NOT NULL) <> (pop_up_id IS NOT NULL)");
                         });
                 });
 
@@ -3089,6 +3115,220 @@ namespace Htn.Infrastructure.Data.Migrations
 
                             t.HasCheckConstraint("ck_outbox_messages_status", "status IN ('Pending', 'Sent', 'Failed')");
                         });
+                });
+
+            modelBuilder.Entity("Htn.Domain.PopUps.PopUpAllocation", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid>("PopUpId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("pop_up_id");
+
+                    b.Property<int>("QtyBrought")
+                        .HasColumnType("integer")
+                        .HasColumnName("qty_brought");
+
+                    b.Property<int?>("QtyReturned")
+                        .HasColumnType("integer")
+                        .HasColumnName("qty_returned");
+
+                    b.Property<Guid>("VariantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("variant_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_pop_up_allocations");
+
+                    b.HasIndex("VariantId")
+                        .HasDatabaseName("ix_pop_up_allocations_variant_id");
+
+                    b.HasIndex("PopUpId", "VariantId")
+                        .IsUnique()
+                        .HasDatabaseName("ux_pop_up_allocations_pop_up_variant");
+
+                    b.ToTable("pop_up_allocations", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_pop_up_allocations_qty", "qty_brought > 0 AND (qty_returned IS NULL OR qty_returned BETWEEN 0 AND qty_brought)");
+                        });
+                });
+
+            modelBuilder.Entity("Htn.Domain.PopUps.PopUpStore", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<int?>("ApprenticePct")
+                        .HasColumnType("integer")
+                        .HasColumnName("apprentice_pct");
+
+                    b.Property<int?>("BoardPct")
+                        .HasColumnType("integer")
+                        .HasColumnName("board_pct");
+
+                    b.Property<decimal?>("CashCounted")
+                        .HasPrecision(12, 2)
+                        .HasColumnType("numeric(12,2)")
+                        .HasColumnName("cash_counted");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid>("CreatedById")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by_id");
+
+                    b.Property<string>("DiscountMode")
+                        .IsRequired()
+                        .HasMaxLength(14)
+                        .HasColumnType("character varying(14)")
+                        .HasColumnName("discount_mode");
+
+                    b.Property<DateTimeOffset>("EndsAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("ends_at");
+
+                    b.Property<decimal>("FeeAmount")
+                        .HasPrecision(12, 2)
+                        .HasColumnType("numeric(12,2)")
+                        .HasColumnName("fee_amount");
+
+                    b.Property<int?>("GoonPct")
+                        .HasColumnType("integer")
+                        .HasColumnName("goon_pct");
+
+                    b.Property<int?>("MemberPct")
+                        .HasColumnType("integer")
+                        .HasColumnName("member_pct");
+
+                    b.Property<decimal?>("MissingValue")
+                        .HasPrecision(12, 2)
+                        .HasColumnType("numeric(12,2)")
+                        .HasColumnName("missing_value");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(160)
+                        .HasColumnType("character varying(160)")
+                        .HasColumnName("name");
+
+                    b.Property<Guid>("OwnerCommitteeId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("owner_committee_id");
+
+                    b.Property<uint>("RowVersion")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.Property<DateTimeOffset>("StartsAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("starts_at");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)")
+                        .HasColumnName("status");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedById")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by_id");
+
+                    b.Property<Guid?>("VenueDirectoryOrgId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("venue_directory_org_id");
+
+                    b.Property<string>("VenueText")
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)")
+                        .HasColumnName("venue_text");
+
+                    b.Property<string>("WriteOffReason")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("write_off_reason");
+
+                    b.Property<DateTimeOffset?>("WrittenOffAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("written_off_at");
+
+                    b.Property<Guid?>("WrittenOffById")
+                        .HasColumnType("uuid")
+                        .HasColumnName("written_off_by_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_pop_up_stores");
+
+                    b.HasIndex("OwnerCommitteeId")
+                        .HasDatabaseName("ix_pop_up_stores_owner_committee");
+
+                    b.HasIndex("Status")
+                        .HasDatabaseName("ix_pop_up_stores_status");
+
+                    b.HasIndex("VenueDirectoryOrgId")
+                        .HasDatabaseName("ix_pop_up_stores_venue_directory_org_id");
+
+                    b.ToTable("pop_up_stores", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_pop_up_stores_dates", "ends_at > starts_at");
+
+                            t.HasCheckConstraint("ck_pop_up_stores_discount_mode", "discount_mode IN ('SameAsDefault', 'None', 'Custom')");
+
+                            t.HasCheckConstraint("ck_pop_up_stores_fee", "fee_amount >= 0");
+
+                            t.HasCheckConstraint("ck_pop_up_stores_pct", "(goon_pct IS NULL OR goon_pct BETWEEN 0 AND 100) AND (apprentice_pct IS NULL OR apprentice_pct BETWEEN 0 AND 100) AND (member_pct IS NULL OR member_pct BETWEEN 0 AND 100) AND (board_pct IS NULL OR board_pct BETWEEN 0 AND 100) AND (discount_mode = 'Custom') = (goon_pct IS NOT NULL)");
+
+                            t.HasCheckConstraint("ck_pop_up_stores_status", "status IN ('Planned', 'Open', 'NeedsCount', 'ClosedBalanced', 'ClosedMissing')");
+
+                            t.HasCheckConstraint("ck_pop_up_stores_venue", "(venue_directory_org_id IS NOT NULL) <> (venue_text IS NOT NULL)");
+
+                            t.HasCheckConstraint("ck_pop_up_stores_written_off", "(written_off_at IS NULL) = (written_off_by_id IS NULL) AND (written_off_at IS NULL) = (write_off_reason IS NULL)");
+                        });
+                });
+
+            modelBuilder.Entity("Htn.Domain.PopUps.PopUpTeamMember", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid>("PersonId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("person_id");
+
+                    b.Property<Guid>("PopUpId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("pop_up_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_pop_up_team_members");
+
+                    b.HasIndex("PersonId")
+                        .HasDatabaseName("ix_pop_up_team_members_person_id");
+
+                    b.HasIndex("PopUpId", "PersonId")
+                        .IsUnique()
+                        .HasDatabaseName("ux_pop_up_team_members_pop_up_person");
+
+                    b.ToTable("pop_up_team_members", (string)null);
                 });
 
             modelBuilder.Entity("Htn.Domain.Registrations.Attendee", b =>
@@ -6614,8 +6854,13 @@ namespace Htn.Infrastructure.Data.Migrations
                         .WithMany()
                         .HasForeignKey("EventId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired()
                         .HasConstraintName("fk_merch_items_events_event_id");
+
+                    b.HasOne("Htn.Domain.Events.Event", null)
+                        .WithMany()
+                        .HasForeignKey("LeftoverSourceEventId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_merch_items_events_leftover_source_event_id");
                 });
 
             modelBuilder.Entity("Htn.Domain.Merch.MerchSale", b =>
@@ -6636,8 +6881,13 @@ namespace Htn.Infrastructure.Data.Migrations
                         .WithMany()
                         .HasForeignKey("EventId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired()
                         .HasConstraintName("fk_merch_sales_events_event_id");
+
+                    b.HasOne("Htn.Domain.PopUps.PopUpStore", null)
+                        .WithMany()
+                        .HasForeignKey("PopUpId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_merch_sales_pop_up_stores_pop_up_id");
                 });
 
             modelBuilder.Entity("Htn.Domain.Merch.MerchSaleLine", b =>
@@ -6724,6 +6974,56 @@ namespace Htn.Infrastructure.Data.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
                         .HasConstraintName("fk_position_assignments_positions_position_id");
+                });
+
+            modelBuilder.Entity("Htn.Domain.PopUps.PopUpAllocation", b =>
+                {
+                    b.HasOne("Htn.Domain.PopUps.PopUpStore", null)
+                        .WithMany()
+                        .HasForeignKey("PopUpId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_pop_up_allocations_pop_up_stores_pop_up_id");
+
+                    b.HasOne("Htn.Domain.Merch.MerchVariant", null)
+                        .WithMany()
+                        .HasForeignKey("VariantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_pop_up_allocations_merch_variants_variant_id");
+                });
+
+            modelBuilder.Entity("Htn.Domain.PopUps.PopUpStore", b =>
+                {
+                    b.HasOne("Htn.Domain.Committees.Committee", null)
+                        .WithMany()
+                        .HasForeignKey("OwnerCommitteeId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_pop_up_stores_committees_owner_committee_id");
+
+                    b.HasOne("Htn.Domain.Directory.DirectoryOrg", null)
+                        .WithMany()
+                        .HasForeignKey("VenueDirectoryOrgId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_pop_up_stores_directory_orgs_venue_directory_org_id");
+                });
+
+            modelBuilder.Entity("Htn.Domain.PopUps.PopUpTeamMember", b =>
+                {
+                    b.HasOne("Htn.Domain.Organization.Person", null)
+                        .WithMany()
+                        .HasForeignKey("PersonId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_pop_up_team_members_people_person_id");
+
+                    b.HasOne("Htn.Domain.PopUps.PopUpStore", null)
+                        .WithMany()
+                        .HasForeignKey("PopUpId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_pop_up_team_members_pop_up_stores_pop_up_id");
                 });
 
             modelBuilder.Entity("Htn.Domain.Registrations.Attendee", b =>

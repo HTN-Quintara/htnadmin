@@ -12,6 +12,7 @@ using Htn.Domain.Registrations;
 using Htn.Domain.Agenda;
 using Htn.Domain.Leads;
 using Htn.Domain.Merch;
+using Htn.Domain.PopUps;
 using Htn.Domain.Speakers;
 using Htn.Domain.Sponsors;
 using Htn.Domain.Settings;
@@ -96,6 +97,9 @@ public sealed class HtnDbContext(DbContextOptions<HtnDbContext> options)
     public DbSet<MerchSale> MerchSales => Set<MerchSale>();
     public DbSet<MerchSaleLine> MerchSaleLines => Set<MerchSaleLine>();
     public DbSet<Membership> Memberships => Set<Membership>();
+    public DbSet<PopUpStore> PopUpStores => Set<PopUpStore>();
+    public DbSet<PopUpTeamMember> PopUpTeamMembers => Set<PopUpTeamMember>();
+    public DbSet<PopUpAllocation> PopUpAllocations => Set<PopUpAllocation>();
     public DbSet<AuditEntry> AuditEntries => Set<AuditEntry>();
     public DbSet<OutboxMessage> Outbox => Set<OutboxMessage>();
     public DbSet<AccountToken> AccountTokens => Set<AccountToken>();
@@ -200,6 +204,12 @@ public sealed class HtnDbContext(DbContextOptions<HtnDbContext> options)
             // A membership row is fully append-only: no update, no delete, ever — a renewal is a new row.
             if (entry.State is EntityState.Modified or EntityState.Deleted && entry.Entity is Membership)
                 throw new InvalidOperationException("Membership is append-only.");
+            // Phase 8C: a pop-up, its allocations and its team are deletable only while still Planned — once it
+            // opens, nothing is irreversible yet undone, but the real guarantee (allocations/team rows whose pop-up
+            // has moved on) is the database trigger (PopUps_Guards), which can see the pop-up's live status; this
+            // check only catches the pop-up row itself.
+            if (entry.State == EntityState.Deleted && entry.Entity is PopUpStore pu && pu.Status != PopUpStatus.Planned)
+                throw new InvalidOperationException("A pop-up past Planned is never deleted.");
             if (entry.State == EntityState.Deleted && entry.Entity is Position or PositionAssignment or PaymentAccount or StoredFile or Domain.Settings.OrgSettings
                     or Event or TicketType or Voucher or Registration or Attendee or Payment or PaymentProof
                     or Committee or CommitteeMember or EventVolunteer

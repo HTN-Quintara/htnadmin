@@ -11,7 +11,7 @@ public static class MerchViews
         new(v.Id, v.ItemId, v.Label, v.StockOnHand, v.IsActive, v.IsActive && v.StockOnHand <= LowStockThreshold);
 
     public static MerchItemDto Item(MerchItem item, IReadOnlyList<MerchVariant> variants) =>
-        new(item.Id, item.EventId, item.Name, item.Price, item.SwatchColor, item.IsActive,
+        new(item.Id, item.EventId, item.LeftoverSourceEventId, item.Name, item.Price, item.SwatchColor, item.IsActive,
             [.. variants.Where(v => v.ItemId == item.Id).OrderBy(v => v.Label).Select(Variant)]);
 
     public static EventMerchSettingsDto Settings(EventMerchSettings s) =>
@@ -21,7 +21,7 @@ public static class MerchViews
         new(l.Id, l.ItemId, itemName, l.VariantId, variantLabel, l.Qty, l.UnitPriceSnapshot, l.LineTotal);
 
     public static MerchSaleDto Sale(MerchSale s, IReadOnlyList<MerchSaleLineDto> lines) =>
-        new(s.Id, s.EventId, s.BuyerPersonId, s.BuyerAttendeeId, s.BuyerNameSnapshot, s.BuyerLevelSnapshot,
+        new(s.Id, s.EventId, s.PopUpId, s.BuyerPersonId, s.BuyerAttendeeId, s.BuyerNameSnapshot, s.BuyerLevelSnapshot,
             s.Subtotal, s.DiscountPct, s.DiscountAmount, s.Total, s.Method, s.CashierId, s.Station, s.SoldAt, lines,
             s.MembershipFeeIncluded, s.MembershipFeeAmount);
 }

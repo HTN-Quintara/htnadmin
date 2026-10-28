@@ -140,13 +140,22 @@ public static class Policies
         auth.AddPolicy(MerchSell, p => p.RequireAuthenticatedUser().RequireRole(Roles.Board, Roles.Goon)
             .AddRequirements(new CommitteeScopedRequirement(CommitteeAccess.MerchSell)));
 
+        // PopUps.Manage (Phase 8C): board, or the lead of a PopUpsAllowed committee. PopUps.Sell additionally
+        // admits anyone on that pop-up's store team (goon or apprentice). Both use the dedicated
+        // PopUpScopedHandler/PopUpScope two-layer shape (see its remarks), not CommitteeScopedHandler, because
+        // Sell's third "on the team" branch isn't a committee concept at all.
+        auth.AddPolicy(PopUpsManage, p => p.RequireAuthenticatedUser().RequireRole(Roles.Board, Roles.Goon)
+            .AddRequirements(new PopUpScopedRequirement(PopUpAccess.Manage)));
+        auth.AddPolicy(PopUpsSell, p => p.RequireAuthenticatedUser().RequireRole(Roles.Board, Roles.Goon, Roles.Apprentice)
+            .AddRequirements(new PopUpScopedRequirement(PopUpAccess.Sell)));
+
         string[] implemented =
         [
             PeopleView, PeopleManage, SettingsPersonal, EventsView, CheckInScan,
             FinanceView, FinanceRequest, FinancePost, FinanceApprove,
             CommitteesManageMembers, TasksManage, TasksWork, TasksViewBoard, LeaderboardView, SpeakersManage,
             DirectoryManage, DirectoryView, InvitationsManage, SuppliersManage, SuppliersView, SuppliersRate,
-            MerchManage, MerchSell,
+            MerchManage, MerchSell, PopUpsManage, PopUpsSell,
         ];
         foreach (var name in All.Except(implemented))
             auth.AddPolicy(name, p => p.RequireAuthenticatedUser().RequireRole(Roles.Board));

@@ -13,6 +13,7 @@ export const merchVariant = (over: Record<string, unknown> = {}) => ({
 export const merchItem = (over: Record<string, unknown> = {}) => ({
   id: 'i1',
   eventId: 'e1',
+  leftoverSourceEventId: null,
   name: 'HTN Con Tee',
   price: 450,
   swatchColor: '#B71C1C',
@@ -28,6 +29,7 @@ export const merchItem = (over: Record<string, unknown> = {}) => ({
 export const totebagItem = (over: Record<string, unknown> = {}) => ({
   id: 'i2',
   eventId: 'e1',
+  leftoverSourceEventId: null,
   name: 'Tote bag',
   price: 180,
   swatchColor: '#374151',

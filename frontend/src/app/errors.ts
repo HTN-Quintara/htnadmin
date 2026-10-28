@@ -141,6 +141,13 @@ const codeMessages: Record<string, string> = {
   insufficient_stock: 'Not enough stock left. Reload and try again.',
   unknown_code: "That code isn't a valid ticket for this event.",
   no_buyer: 'Identify the buyer before completing the sale.',
+  // Merch store & pop-ups (frame 21b, Phase 8C).
+  committee_not_allowed: "This committee isn't allowed to run pop-ups. Ask an admin to turn it on.",
+  insufficient_leftover_stock: 'Not enough leftover stock available for that quantity.',
+  not_written_off_eligible: 'Only a pop-up closed with something missing can be written off.',
+  already_written_off: 'This pop-up has already been written off.',
+  already_counted: 'This pop-up has already been counted.',
+  already_allocated: 'This variant is already allocated to this pop-up.',
   // Membership sales (frame 21, Phase 8B).
   already_a_member: 'This person is already in the organization. Remove membership from the cart.',
   not_checked_in: "This attendee hasn't checked in at an event yet, so they can't become a Member.",

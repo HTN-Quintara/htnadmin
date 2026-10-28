@@ -60,6 +60,16 @@ export function useSetLeadMutation(eventId: string) {
   })
 }
 
+/** Phase 8C, board-only on the server: whether a committee may create and run pop-up stores. */
+export function useSetPopUpsAllowedMutation(eventId: string) {
+  const refetch = useCommitteesRefetch(eventId)
+  return useMutation({
+    mutationFn: ({ committeeId, allowed }: { committeeId: string; allowed: boolean }) =>
+      apiVoid(`${committeePath(eventId, committeeId)}/pop-ups-allowed`, { method: 'PUT', body: { allowed } }),
+    onSuccess: refetch,
+  })
+}
+
 export function useAddMemberMutation(eventId: string) {
   const refetch = useCommitteesRefetch(eventId)
   return useMutation({

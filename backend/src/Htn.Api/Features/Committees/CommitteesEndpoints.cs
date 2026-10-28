@@ -47,6 +47,10 @@ public static class CommitteesEndpoints
         g.MapPut("/{committeeId:guid}/lead", SetLead).RequireAuthorization(Policies.CommitteesManageMembers)
             .RequireAuthorization(Policies.BoardOnly)
             .RequireRateLimiting(TaskRateLimiting.Write).Validate<CommitteeLeadRequest>();
+        // Phase 8C: "Admins choose which committees" may run pop-up stores — board-only, like SetLead.
+        g.MapPut("/{committeeId:guid}/pop-ups-allowed", SetPopUpsAllowed).RequireAuthorization(Policies.CommitteesManageMembers)
+            .RequireAuthorization(Policies.BoardOnly)
+            .RequireRateLimiting(TaskRateLimiting.Write).Validate<CommitteePopUpsAllowedRequest>();
         g.MapPost("/{committeeId:guid}/members", AddMember).RequireAuthorization(Policies.CommitteesManageMembers)
             .RequireRateLimiting(TaskRateLimiting.Write).Validate<CommitteeMemberRequest>();
         g.MapDelete("/{committeeId:guid}/members/{personId:guid}", RemoveMember)
@@ -190,6 +194,22 @@ public static class CommitteesEndpoints
         audit.Record(me.Id, "committee.set_lead", nameof(Committee), committee.Id.ToString(), before, CommitteeViews.Audit(committee));
         if (await SaveAsync(db, ct) is { } conflict) return conflict;
         await tx.CommitAsync(ct);
+        return TypedResults.Ok(await CommitteeViews.CardAsync(db, openTasks, committee, canManage: true, ct));
+    }
+
+    private static async Task<IResult> SetPopUpsAllowed(
+        Guid eventId, Guid committeeId, CommitteePopUpsAllowedRequest req, HtnDbContext db, ICommitteeOpenTasks openTasks,
+        IAuditLog audit, ICurrentUser me, CancellationToken ct)
+    {
+        var committee = await FindAsync(db, eventId, committeeId, ct);
+        if (committee is null) return TypedResults.NotFound();
+        if (!committee.IsActive) return Inactive();
+
+        var before = new { committee.PopUpsAllowed };
+        committee.SetPopUpsAllowed(req.Allowed!.Value);
+        audit.Record(me.Id, "committee.set_pop_ups_allowed", nameof(Committee), committee.Id.ToString(),
+            before, new { committee.PopUpsAllowed });
+        await db.SaveChangesAsync(ct);
         return TypedResults.Ok(await CommitteeViews.CardAsync(db, openTasks, committee, canManage: true, ct));
     }
 

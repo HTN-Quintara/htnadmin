@@ -43,6 +43,8 @@ export const boardMe: Me = {
     'Suppliers.Rate',
     'Merch.Manage',
     'Merch.Sell',
+    'PopUps.Manage',
+    'PopUps.Sell',
   ],
   preferences: { mode: 'system', textSize: 'default', density: 'comfortable' },
 }
@@ -119,6 +121,22 @@ export const committeeLeadMe: Me = {
   lastName: 'Villanueva',
   email: 'carlo@hackthenorth.ph',
   policies: [...goonMe.policies, 'Directory.View', 'Suppliers.View', 'Suppliers.Rate', 'Merch.Sell'],
+}
+
+/**
+ * An apprentice on a pop-up's cashier team (`pop_up_team_members`), but not a committee lead: PopUps.Sell's
+ * "may be allowed" route gate includes "on some pop-up's team, anywhere", so this is granted even though
+ * PopUps.Manage is not — mirrors how `committeeLeadMe` exists for Suppliers.Rate.
+ */
+export const popUpTeamMe: Me = {
+  ...goonMe,
+  id: 'u7',
+  personId: 'p7',
+  firstName: 'Dana',
+  lastName: 'Ramos',
+  email: 'dana@hackthenorth.ph',
+  level: 'Apprentice',
+  policies: [...goonMe.policies, 'PopUps.Sell'],
 }
 
 /** The finance assistant: a goon who may add ledger entries, which wait for the CFO. */

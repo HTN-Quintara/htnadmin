@@ -199,7 +199,13 @@ public sealed class AutoPost(HtnDbContext db, IAuditLog audit)
         if (sale.Total <= 0m) return null;
         if (await ExistsAsync(LedgerSource.MerchSale, sale.Id, ct)) return null;
 
-        var fund = await FinanceOps.EventFundAsync(db, sale.EventId, at, ct);
+        // Phase 8C: a pop-up sale always posts to the Organization fund, never to any event's — even though its
+        // stock may have come from a specific event's leftovers — per htn-domain's "Sales post to the Organization
+        // fund." sale.EventId is null for exactly this case (ck_merch_sales_one_scope), so this is the one branch
+        // this shared method needs; every existing event-POS call site is unaffected (sale.PopUpId stays null there).
+        var fund = sale.PopUpId is not null
+            ? await FinanceOps.OrganizationFundAsync(db, ct)
+            : await FinanceOps.EventFundAsync(db, sale.EventId!.Value, at, ct);
         var entry = LedgerEntry.Posted(
             new NewLedgerEntry(
                 fund.Id,
@@ -257,6 +263,41 @@ public sealed class AutoPost(HtnDbContext db, IAuditLog audit)
         db.LedgerEntries.Add(entry);
         audit.Record(actorId, FinanceAuditActions.LedgerAutoPost, nameof(LedgerEntry), entry.Id.ToString(),
             after: new { entry.FundId, entry.Amount, entry.EntryDate, source = entry.Source.ToString(), membershipId = membership.Id });
+        return entry;
+    }
+
+    /// <summary>
+    /// Posts a CFO write-off for a pop-up's missing stock to the Organization fund under <c>Write-off</c>
+    /// (<see cref="LedgerCategories.WriteOffId"/>). The pop-up stays <c>ClosedMissing</c> afterwards — this only
+    /// posts the expense and records who/when (<c>PopUpStore.MarkWrittenOff</c>, called by the caller in the same
+    /// transaction). One live entry per pop-up forever (<c>ux_ledger_entries_source</c>).
+    /// </summary>
+    public async Task<LedgerEntry?> PopUpWriteOffAsync(
+        Htn.Domain.PopUps.PopUpStore popUp, decimal amount, string reason, Guid actorId, DateTimeOffset at, CancellationToken ct)
+    {
+        ArgumentNullException.ThrowIfNull(popUp);
+        if (amount <= 0m) return null;
+        if (await ExistsAsync(LedgerSource.PopUpWriteOff, popUp.Id, ct)) return null;
+
+        var fund = await FinanceOps.OrganizationFundAsync(db, ct);
+        var entry = LedgerEntry.Posted(
+            new NewLedgerEntry(
+                fund.Id,
+                null,
+                LedgerCategories.WriteOffId,
+                await PostableDateAsync(ManilaTime.ManilaDate(at), ct),
+                LedgerDirection.Out,
+                amount,
+                null,
+                $"Pop-up write-off · {popUp.Name} · {reason}",
+                null,
+                LedgerSource.PopUpWriteOff,
+                popUp.Id),
+            actorId,
+            at);
+        db.LedgerEntries.Add(entry);
+        audit.Record(actorId, FinanceAuditActions.LedgerAutoPost, nameof(LedgerEntry), entry.Id.ToString(),
+            after: new { entry.FundId, entry.Amount, entry.EntryDate, source = entry.Source.ToString(), popUpId = popUp.Id }, reason: reason);
         return entry;
     }
 

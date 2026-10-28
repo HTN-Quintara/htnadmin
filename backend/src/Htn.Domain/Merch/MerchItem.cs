@@ -21,7 +21,20 @@ public sealed class MerchItem
     private MerchItem() { }
 
     public Guid Id { get; private set; }
-    public Guid EventId { get; private set; }
+
+    /// <summary>
+    /// The event this item belongs to, or null once its remaining stock has moved to the Merch store (Phase 8C,
+    /// <see cref="MoveToStore"/>) — "leftover stock" is <c>merch_items</c>/<c>merch_variants</c> rows with no event,
+    /// unlinked from the event they were originally sold at into the shared pop-up pool.
+    /// </summary>
+    public Guid? EventId { get; private set; }
+
+    /// <summary>
+    /// The event this item was originally created for, frozen the moment <see cref="MoveToStore"/> is called — the
+    /// "From" label on the Merch store's leftover inventory table. Null until moved; never changes afterwards.
+    /// </summary>
+    public Guid? LeftoverSourceEventId { get; private set; }
+
     public string Name { get; private set; } = default!;
     public decimal Price { get; private set; }
 
@@ -45,7 +58,7 @@ public sealed class MerchItem
         var item = new MerchItem
         {
             Id = Guid.CreateVersion7(at),
-            EventId = eventId,
+            EventId = eventId == Guid.Empty ? null : eventId,
             CreatedAt = at,
             CreatedById = actorId,
             UpdatedAt = at,
@@ -60,6 +73,21 @@ public sealed class MerchItem
         EnsureActive();
         ArgumentNullException.ThrowIfNull(data);
         ApplyEditable(data.Name, data.Price, data.SwatchColor, actorId, at);
+    }
+
+    /// <summary>
+    /// Phase 8C: unlinks this item (and, by the caller's convention, its variants) from its event into the shared
+    /// Merch store leftover pool, stamping <see cref="LeftoverSourceEventId"/> once, forever. Idempotent-by-refusal:
+    /// an item already in the store can't be moved again (there is nowhere else to go, and the "From" label must
+    /// stay frozen).
+    /// </summary>
+    public void MoveToStore(Guid actorId, DateTimeOffset at)
+    {
+        EnsureActive();
+        if (EventId is null) throw new DomainException("This item is already in the Merch store.");
+        LeftoverSourceEventId = EventId;
+        EventId = null;
+        Touch(actorId, at);
     }
 
     public void Deactivate(string reason, Guid actorId, DateTimeOffset at)

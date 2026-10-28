@@ -32,6 +32,8 @@ export const committeeSchema = z.object({
   lead: committeePersonSchema.nullable().default(null),
   members: z.array(committeePersonSchema).default([]),
   volunteers: z.array(committeeVolunteerSchema).default([]),
+  /** Phase 8C, admin-set: whether this committee may create and run pop-up stores. */
+  popUpsAllowed: z.boolean().default(false),
 })
 export type Committee = z.infer<typeof committeeSchema>
 

@@ -12,7 +12,11 @@ public sealed record CommitteesPageDto(
 
 public sealed record CommitteeDto(
     Guid Id, string Name, int SortOrder, bool IsActive, bool CanManage, int OpenTasks, int PeopleCount,
-    CommitteePersonDto? Lead, IReadOnlyList<CommitteeMemberDto> Members, IReadOnlyList<VolunteerDto> Volunteers);
+    CommitteePersonDto? Lead, IReadOnlyList<CommitteeMemberDto> Members, IReadOnlyList<VolunteerDto> Volunteers,
+    bool PopUpsAllowed);
+
+/// <summary>Phase 8C, board-only: whether this committee may create and run pop-up stores.</summary>
+public sealed record CommitteePopUpsAllowedRequest(bool? Allowed);
 
 public sealed record CommitteePersonDto(Guid PersonId, string FirstName, string LastName, PersonLevel Level);
 

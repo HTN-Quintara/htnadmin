@@ -39,14 +39,15 @@ public sealed record PosScanRequest(string? Payload);
 public sealed record MerchVariantDto(Guid Id, Guid ItemId, string Label, int StockOnHand, bool IsActive, bool LowStock);
 
 public sealed record MerchItemDto(
-    Guid Id, Guid EventId, string Name, decimal Price, string? SwatchColor, bool IsActive, IReadOnlyList<MerchVariantDto> Variants);
+    Guid Id, Guid? EventId, Guid? LeftoverSourceEventId, string Name, decimal Price, string? SwatchColor, bool IsActive,
+    IReadOnlyList<MerchVariantDto> Variants);
 
 public sealed record EventMerchSettingsDto(Guid EventId, int GoonPct, int ApprenticePct, int MemberPct, int BoardPct);
 
 public sealed record MerchSaleLineDto(Guid Id, Guid ItemId, string ItemName, Guid VariantId, string VariantLabel, int Qty, decimal UnitPriceSnapshot, decimal LineTotal);
 
 public sealed record MerchSaleDto(
-    Guid Id, Guid EventId, Guid? BuyerPersonId, Guid? BuyerAttendeeId, string BuyerNameSnapshot, PersonLevel? BuyerLevelSnapshot,
+    Guid Id, Guid? EventId, Guid? PopUpId, Guid? BuyerPersonId, Guid? BuyerAttendeeId, string BuyerNameSnapshot, PersonLevel? BuyerLevelSnapshot,
     decimal Subtotal, int DiscountPct, decimal DiscountAmount, decimal Total, MerchSaleMethod Method, Guid CashierId,
     string? Station, DateTimeOffset SoldAt, IReadOnlyList<MerchSaleLineDto> Lines,
     bool MembershipFeeIncluded, decimal? MembershipFeeAmount);

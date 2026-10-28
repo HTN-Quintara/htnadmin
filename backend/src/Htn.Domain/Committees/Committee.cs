@@ -28,6 +28,13 @@ public sealed class Committee
     /// <summary>The lead, who may assign and score this committee's tasks. Mirrored by a <c>Lead</c> member row.</summary>
     public Guid? LeadPersonId { get; private set; }
 
+    /// <summary>
+    /// Phase 8C: whether this committee may create and run pop-up stores (<c>PopUps.Manage</c>/<c>PopUps.Sell</c>).
+    /// A plain bool, set only by the board through <c>Committees.Manage</c> — "Admins choose which committees" per
+    /// the domain rule, with no generic committee-capability table yet.
+    /// </summary>
+    public bool PopUpsAllowed { get; private set; }
+
     public DateTimeOffset CreatedAt { get; private set; }
     public DateTimeOffset? DeactivatedAt { get; private set; }
 
@@ -62,6 +69,13 @@ public sealed class Committee
         EnsureActive();
         if (personId == Guid.Empty) throw new DomainException("A person is required.");
         LeadPersonId = personId;
+    }
+
+    /// <summary>Board-only: lets or forbids this committee from running pop-up stores.</summary>
+    public void SetPopUpsAllowed(bool allowed)
+    {
+        EnsureActive();
+        PopUpsAllowed = allowed;
     }
 
     /// <summary>Deactivates the committee. The caller has already checked that it holds no open tasks.</summary>

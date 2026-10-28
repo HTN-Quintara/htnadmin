@@ -457,7 +457,7 @@ public static class MerchEndpoints
         try
         {
             (sale, lines) = Htn.Domain.Merch.MerchSale.Create(
-                eventId, req.ClientRequestId!.Value, person?.Id, attendee?.Id, buyerName!, buyerLevel, lineInputs, discountPct, req.Method!.Value,
+                eventId, null, req.ClientRequestId!.Value, person?.Id, attendee?.Id, buyerName!, buyerLevel, lineInputs, discountPct, req.Method!.Value,
                 me.Id!.Value, req.Station, includesMembership, membershipFeeAmount, now);
         }
         catch (DomainException ex)
