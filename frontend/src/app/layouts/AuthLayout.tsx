@@ -17,12 +17,7 @@ export function AuthLayout({
   return (
     <main className="flex min-h-screen flex-col items-center justify-center gap-6 bg-gray-50 px-4 py-12 dark:bg-gray-950">
       <div className="flex flex-col items-center gap-3">
-        <div
-          aria-hidden="true"
-          className="flex size-11 items-center justify-center rounded-lg bg-gray-900 text-[0.8125rem] font-bold text-white dark:bg-gray-50 dark:text-gray-900"
-        >
-          HTN
-        </div>
+        <img src="/htn-logo.png" alt="" className="size-11 rounded-lg object-contain" />
         <h1 className="text-center text-2xl font-semibold tracking-tight text-gray-900 dark:text-gray-50">{title}</h1>
         {subtitle ? <p className="max-w-[360px] text-center text-sm text-gray-600 dark:text-gray-400">{subtitle}</p> : null}
       </div>

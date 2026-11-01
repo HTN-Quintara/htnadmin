@@ -51,12 +51,7 @@ const navItems: NavItem[] = [
 function Logo({ subtitle = 'Admin' }: { subtitle?: string }) {
   return (
     <div className="flex items-center gap-2.5">
-      <div
-        aria-hidden="true"
-        className="flex size-8 items-center justify-center rounded-md bg-gray-900 text-[0.6875rem] font-bold text-white dark:bg-gray-50 dark:text-gray-900"
-      >
-        HTN
-      </div>
+      <img src="/htn-logo.png" alt="" className="size-8 rounded-md object-contain" />
       <div className="flex flex-col leading-tight">
         <span className="text-sm font-semibold text-gray-900 dark:text-gray-50">HackTheNorth.PH</span>
         <span className="text-xs text-gray-600 dark:text-gray-400">{subtitle}</span>
