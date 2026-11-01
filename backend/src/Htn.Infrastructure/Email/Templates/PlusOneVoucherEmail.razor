@@ -1,0 +1,17 @@
+<EmailLayout Title="@($"Your 50% off voucher for {EventName}")" Preheader="@($"{SpeakerName} invited you to {EventName}")" BrandColor="@BrandColor" LogoCid="@LogoCid" Heading="You're invited!">
+  <p style="margin-top:0;">Hi @FirstName,</p>
+  <p>@SpeakerName is speaking at <strong>@EventName</strong> and would like you to join as their plus-one. Your accommodation is free, shared with @SpeakerFirstName; your event ticket is 50% off with the voucher below.</p>
+  <p style="font-size:22px;font-weight:700;letter-spacing:0.08em;text-align:center;margin:24px 0;padding:12px;background:#f9fafb;border-radius:8px;color:#111827;">@VoucherCode</p>
+  <EmailButton Href="@RegisterLink" Label="Register now" BrandColor="@BrandColor" />
+</EmailLayout>
+
+@code {
+    [Parameter, EditorRequired] public string FirstName { get; set; } = "";
+    [Parameter, EditorRequired] public string SpeakerName { get; set; } = "";
+    [Parameter, EditorRequired] public string SpeakerFirstName { get; set; } = "";
+    [Parameter, EditorRequired] public string EventName { get; set; } = "";
+    [Parameter, EditorRequired] public string VoucherCode { get; set; } = "";
+    [Parameter, EditorRequired] public string RegisterLink { get; set; } = "";
+    [Parameter] public string BrandColor { get; set; } = Brand.Color;
+    [Parameter] public string? LogoCid { get; set; }
+}

@@ -1,0 +1,14 @@
+<EmailLayout Title="Your verification code" Preheader="@($"Your code is {Code} -- expires in 10 minutes")" BrandColor="@BrandColor" LogoCid="@LogoCid" Heading="Your verification code">
+  <p style="margin-top:0;">Hi @FirstName,</p>
+  <p>Enter this code to continue confirming your details for <strong>@EventName</strong>:</p>
+  <p style="font-size:32px;font-weight:700;letter-spacing:0.2em;text-align:center;margin:24px 0;color:#111827;">@Code</p>
+  <p style="color:#6b7280;font-size:13px;">It expires in 10 minutes. If you didn't request this, you can ignore this email.</p>
+</EmailLayout>
+
+@code {
+    [Parameter, EditorRequired] public string FirstName { get; set; } = "";
+    [Parameter, EditorRequired] public string EventName { get; set; } = "";
+    [Parameter, EditorRequired] public string Code { get; set; } = "";
+    [Parameter] public string BrandColor { get; set; } = Brand.Color;
+    [Parameter] public string? LogoCid { get; set; }
+}

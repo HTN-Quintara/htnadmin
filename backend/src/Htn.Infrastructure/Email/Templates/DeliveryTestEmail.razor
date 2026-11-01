@@ -1,0 +1,11 @@
+<EmailLayout Title="Email delivery works" Preheader="This is a test from the Email delivery settings." BrandColor="@BrandColor" LogoCid="@LogoCid" Heading="Email delivery works">
+  <p style="margin-top:0;">Hi,</p>
+  <p>This is a test email from the @Brand.OrgName Admin email delivery settings. If you can read it, delivery through Mailtrap works.</p>
+  <p style="color:#6b7280;font-size:13px;">Requested by @RequestedBy. You can ignore this email.</p>
+</EmailLayout>
+
+@code {
+    [Parameter, EditorRequired] public string RequestedBy { get; set; } = "";
+    [Parameter] public string BrandColor { get; set; } = Brand.Color;
+    [Parameter] public string? LogoCid { get; set; }
+}

@@ -1,0 +1,14 @@
+<EmailLayout Title="@($"Confirm your details for {EventName}")" Preheader="@($"A private link for {EventName} -- please confirm your travel details")" BrandColor="@BrandColor" LogoCid="@LogoCid" Heading="Let's confirm your travel">
+  <p style="margin-top:0;">Hi @FirstName,</p>
+  <p>Thank you for speaking at <strong>@EventName</strong>. Please use the private link below to confirm your travel details. You'll be asked for a one-time code sent to this email, so a forwarded link alone won't open it.</p>
+  <EmailButton Href="@Link" Label="Confirm my details" BrandColor="@BrandColor" />
+  <p style="color:#6b7280;font-size:13px;">This link is only for you and expires in 14 days. If you need to make changes later, use the same link again -- you'll just get a new code.</p>
+</EmailLayout>
+
+@code {
+    [Parameter, EditorRequired] public string FirstName { get; set; } = "";
+    [Parameter, EditorRequired] public string EventName { get; set; } = "";
+    [Parameter, EditorRequired] public string Link { get; set; } = "";
+    [Parameter] public string BrandColor { get; set; } = Brand.Color;
+    [Parameter] public string? LogoCid { get; set; }
+}

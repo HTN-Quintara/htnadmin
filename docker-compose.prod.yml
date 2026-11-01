@@ -1,0 +1,51 @@
+# Production-like example: nginx serves the built SPA on port 80 and proxies /api to the api.
+#   docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
+# Put TLS in front of this (reverse proxy / load balancer) and set App__PublicBaseUrl to the public URL.
+services:
+  db:
+    ports: !reset []           # database is internal only
+
+  api:
+    image: htnadmin-api:prod
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      # Base of every link in emails (invite, reset, proof upload, registration). Must be absolute https outside
+      # Development, or the API refuses to start.
+      App__PublicBaseUrl: ${PUBLIC_BASE_URL:?Set PUBLIC_BASE_URL in .env to the public https URL, e.g. https://admin.hackthenorth.ph}
+      Seed__Dev: "false"
+      # Data Protection keys (auth cookies, 2FA state, antiforgery) are stored in Postgres. Production refuses to
+      # start unless they are encrypted at rest: mount a PFX with a private key (e.g. a read-only volume at
+      # /run/secrets/dataprotection.pfx) and set its path/password here. Only for throwaway local runs, set
+      # DataProtection__AllowUnprotectedKeys=true instead.
+      DataProtection__CertificatePath: ${DATAPROTECTION_CERT_PATH:-}
+      DataProtection__CertificatePassword: ${DATAPROTECTION_CERT_PASSWORD:-}
+      DataProtection__AllowUnprotectedKeys: ${DATAPROTECTION_ALLOW_UNPROTECTED_KEYS:-false}
+      # Production refuses to start without MAILTRAP_API_TOKEN (set in .env) unless this is true (emails are then
+      # only logged, with masked recipients).
+      Email__AllowLoggingSender: ${EMAIL_ALLOW_LOGGING_SENDER:-false}
+      # Ticket QR signing key: at least 32 random bytes, e.g. `openssl rand -base64 48`. Required; rotating it
+      # invalidates every QR code already emailed (resend tickets afterwards).
+      TICKET_SIGNING_KEY: ${TICKET_SIGNING_KEY:?Set TICKET_SIGNING_KEY in .env (openssl rand -base64 48)}
+      # Who may set X-Forwarded-For/Proto: the nginx container's network (CIDR) or IPs, comma-separated.
+      # Leave blank only if the api is reachable solely through nginx (as in this file: no published api port).
+      ForwardedHeaders__KnownNetworks: ${FORWARDED_KNOWN_NETWORKS:-}
+      ForwardedHeaders__KnownProxies: ${FORWARDED_KNOWN_PROXIES:-}
+    ports: !reset []           # reachable only through nginx
+
+  web:
+    build:
+      target: prod
+    image: htnadmin-web:prod
+    environment: !override
+      # CIDR of the TLS terminator / load balancer in front of nginx, whose X-Forwarded-For is trusted for the real
+      # client address. Default 127.0.0.1/32: nothing in front (clients connect to nginx directly).
+      TRUSTED_PROXY_CIDR: ${TRUSTED_PROXY_CIDR:-127.0.0.1/32}
+    volumes: !reset []
+    ports: !override
+      - "80:80"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://127.0.0.1/healthz || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 10s

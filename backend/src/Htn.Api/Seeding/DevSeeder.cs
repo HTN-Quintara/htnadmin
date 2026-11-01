@@ -1,0 +1,681 @@
+using Htn.Domain.Common;
+using Htn.Domain.Committees;
+using Htn.Domain.Directory;
+using Htn.Domain.Events;
+using Htn.Domain.Files;
+using Htn.Domain.Finance;
+using Htn.Domain.Invitations;
+using Htn.Domain.Registrations;
+using Htn.Domain.Agenda;
+using Htn.Domain.Leads;
+using Htn.Domain.Speakers;
+using Htn.Domain.Sponsors;
+using Htn.Domain.Settings;
+using Htn.Domain.Suppliers;
+using Htn.Api.Features.Tasks;
+using Htn.Domain.Tasks;
+using Htn.Domain.Organization;
+using Htn.Infrastructure.Data;
+using Htn.Infrastructure.Identity;
+using Htn.Infrastructure.Storage;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
+
+namespace Htn.Api.Seeding;
+
+/// <summary>
+/// Development-only, idempotent sample data (including a Board account with a published password). Runs only when
+/// the environment is Development AND <c>Seed:Dev=true</c>, so a mis-set ASPNETCORE_ENVIRONMENT alone doesn't seed it.
+/// </summary>
+public static class DevSeeder
+{
+    public const string DevPassword = "Dev-Password-123!";
+    public const string ConfigKey = "Seed:Dev";
+
+    public static bool ShouldRun(IHostEnvironment env, IConfiguration config) =>
+        env.IsDevelopment() && config.GetValue<bool>(ConfigKey);
+
+    public static async Task SeedAsync(IServiceProvider services, CancellationToken ct = default)
+    {
+        await using var scope = services.CreateAsyncScope();
+        var sp = scope.ServiceProvider;
+        var db = sp.GetRequiredService<HtnDbContext>();
+        var users = sp.GetRequiredService<UserManager<AppUser>>();
+        var clock = sp.GetRequiredService<TimeProvider>();
+        var logger = sp.GetRequiredService<ILoggerFactory>().CreateLogger(typeof(DevSeeder));
+
+        await EnsureAsync(db, users, clock, "Alex", "Reyes", "alex@hackthenorth.ph", PersonLevel.Board, "Chairperson", ct);
+        await EnsureAsync(db, users, clock, "Mika", "Soriano", "mika@hackthenorth.ph", PersonLevel.Goon, "Head of Logistics", ct);
+        await EnsureAsync(db, users, clock, "Paolo", "Garcia", "paolo@hackthenorth.ph", PersonLevel.Member, null, ct);
+        await EnsureAsync(db, users, clock, "Leo", "Navarro", "leo@hackthenorth.ph", PersonLevel.Board, "Treasurer", ct);
+        // Frame 06: a committee member and someone left in the "Not yet assigned" pool.
+        await EnsureAsync(db, users, clock, "Ana", "Bautista", "ana@hackthenorth.ph", PersonLevel.Apprentice, null, ct);
+        await EnsureAsync(db, users, clock, "Ken", "Morales", "ken@hackthenorth.ph", PersonLevel.Goon, "Head of Tech", ct);
+        await EnsurePositionsAsync(db, clock, ct);
+        await EnsureEventsAsync(db, clock, ct);
+        await EnsureRegistrationsAsync(db, sp.GetRequiredService<IPublicIdGenerator>(), clock, ct);
+        await EnsureCommitteesAsync(db, clock, ct);
+        await EnsureTasksAsync(db, clock, ct);
+        await EnsureFinanceAsync(db, users, sp.GetRequiredService<IFileStorage>(), clock, ct);
+        await EnsureSponsorsAsync(db, clock, ct);
+        await EnsureLeadsAsync(db, clock, ct);
+        await EnsureDirectoryAsync(db, clock, ct);
+        await EnsureInvitationsAsync(db, clock, ct);
+        await EnsureSuppliersAsync(db, clock, ct);
+        await EnsureAgendaAsync(db, clock, ct);
+        await EnsureSpeakerTravelModeAsync(db, clock, ct);
+        logger.LogInformation("Development seed data is in place");
+    }
+
+    /// <summary>Sample goon positions from the design canvas. Board seats come from the migration in every environment.</summary>
+    public static readonly string[] SampleGoonPositions =
+        ["Head of Logistics", "Head of Programs", "Head of Marketing", "Head of Partnerships", "Head of Tech"];
+
+    private static async Task EnsurePositionsAsync(HtnDbContext db, TimeProvider clock, CancellationToken ct)
+    {
+        var existing = await db.Positions.Where(p => p.Kind == PositionKind.GoonPosition).Select(p => p.Title).ToListAsync(ct);
+        var order = existing.Count;
+        foreach (var title in SampleGoonPositions.Where(t => !existing.Contains(t)))
+            db.Positions.Add(Position.Create(PositionKind.GoonPosition, title, ++order, clock.GetUtcNow()));
+        await db.SaveChangesAsync(ct);
+    }
+
+    private static async Task EnsureAsync(
+        HtnDbContext db, UserManager<AppUser> users, TimeProvider clock,
+        string first, string last, string email, PersonLevel level, string? position, CancellationToken ct)
+    {
+        if (await db.People.AnyAsync(p => p.Email == email, ct)) return;
+        var now = clock.GetUtcNow();
+        var person = Person.Create(first, null, last, email, level, position, now, actorId: null, reason: MemberRule.SeededReason);
+        db.People.Add(person);
+        await db.SaveChangesAsync(ct);
+
+        if (!level.HasLogin()) return;
+        var user = new AppUser
+        {
+            Id = Guid.CreateVersion7(now),
+            UserName = email,
+            Email = email,
+            EmailConfirmed = true,
+            PersonId = person.Id,
+            CreatedAt = now,
+            LockoutEnabled = true,
+        };
+        var result = await users.CreateAsync(user, DevPassword);
+        if (!result.Succeeded) throw new InvalidOperationException(string.Join("; ", result.Errors.Select(e => e.Description)));
+        await users.AddToRoleAsync(user, Roles.For(level));
+    }
+
+    public const string SampleEventSlug = "htn-con-2026";
+    public const string SampleDraftSlug = "student-ctf";
+
+    /// <summary>
+    /// Sample events from the design canvas: HTN Con 2026 on sale with four ticket types and STUDENT20, and the
+    /// Student CTF draft. Times are Asia/Manila (+08:00). Skipped per event when its slug already exists.
+    /// </summary>
+    private static async Task EnsureEventsAsync(HtnDbContext db, TimeProvider clock, CancellationToken ct)
+    {
+        var now = clock.GetUtcNow();
+        var manila = TimeSpan.FromHours(8);
+        if (!await db.Events.AnyAsync(e => e.Slug == SampleEventSlug, ct))
+        {
+            var con = Event.Create("HTN Con 2026", SampleEventSlug,
+                new DateTimeOffset(2026, 11, 22, 8, 0, 0, manila), new DateTimeOffset(2026, 11, 22, 18, 0, 0, manila),
+                "SMX Convention Center, Pasay", 400,
+                "The yearly HackTheNorth.PH conference: talks, workshops and villages for the security community.", now, null);
+            con.UpdateRegistrationSettings(manualRegistration: true, groupRegistration: true, publicPage: true, ProofMode.Upload,
+                isMainEvent: true, membershipFee: 300m, membershipYear: 2026, now, null);
+            db.Events.Add(con);
+
+            DateTimeOffset salesStart = new(2026, 10, 16, 0, 0, 0, manila), salesEnd = new(2026, 11, 20, 23, 59, 0, manila);
+            var regular = TicketType.Create(con.Id, "Regular", 1500m, 200, 1, salesStart, salesEnd, TicketVisibility.Public, 1, now);
+            var student = TicketType.Create(con.Id, "Student", 800m, 40, 1, salesStart, salesEnd, TicketVisibility.Public, 2, now);
+            var team = TicketType.Create(con.Id, "Team of 5", 6000m, 10, 5, salesStart, salesEnd, TicketVisibility.Public, 3, now);
+            var comp = TicketType.Create(con.Id, "Sponsor comp", 0m, 30, 1, null, null, TicketVisibility.Hidden, 4, now);
+            db.TicketTypes.AddRange(regular, student, team, comp);
+            db.Vouchers.Add(Voucher.Create(con.Id, "STUDENT20", VoucherKind.Percent, 20m, [student.Id], 50,
+                new DateTimeOffset(2026, 11, 15, 23, 59, 0, manila), VoucherSource.Manual, now));
+
+            if (con.EndsAt > now) con.Publish(hasActiveTicket: true, now, null); // after the event date the sample stays a draft
+            await db.SaveChangesAsync(ct);
+        }
+
+        if (!await db.Events.AnyAsync(e => e.Slug == SampleDraftSlug, ct))
+        {
+            db.Events.Add(Event.Create("Student CTF", SampleDraftSlug,
+                new DateTimeOffset(2027, 1, 17, 9, 0, 0, manila), new DateTimeOffset(2027, 1, 17, 18, 0, 0, manila),
+                "UP Diliman, Quezon City", 200, "A capture-the-flag competition for student teams.", now, null));
+            await db.SaveChangesAsync(ct);
+        }
+    }
+
+    /// <summary>The six committees of frame 06, in the order the design shows them.</summary>
+    public static readonly string[] SampleCommittees =
+        ["Logistics", "Programs", "Partnerships", "Marketing", "Registration & Check-in", "Tech & AV"];
+
+    /// <summary>
+    /// Committees of HTN Con 2026 (frame 06): the six teams, Mika Soriano leading Logistics with Ana Bautista as a
+    /// member, and two volunteers (one on Logistics, one left in the pool). Each piece is skipped when it already
+    /// exists, so re-seeding changes nothing.
+    /// </summary>
+    private static async Task EnsureCommitteesAsync(HtnDbContext db, TimeProvider clock, CancellationToken ct)
+    {
+        var con = await db.Events.AsNoTracking().SingleOrDefaultAsync(e => e.Slug == SampleEventSlug, ct);
+        if (con is null) return;
+        var now = clock.GetUtcNow();
+
+        var existing = await db.Committees.Where(c => c.EventId == con.Id).ToListAsync(ct);
+        var order = existing.Count == 0 ? 0 : existing.Max(c => c.SortOrder);
+        foreach (var name in SampleCommittees.Where(n => !existing.Any(c => c.Name == n)))
+        {
+            var committee = Committee.Create(con.Id, name, ++order, now);
+            db.Committees.Add(committee);
+            existing.Add(committee);
+        }
+        await db.SaveChangesAsync(ct);
+
+        var logistics = existing.Single(c => c.Name == "Logistics");
+        var mika = await db.People.AsNoTracking().Where(p => p.Email == "mika@hackthenorth.ph").Select(p => (Guid?)p.Id).SingleOrDefaultAsync(ct);
+        var ana = await db.People.AsNoTracking().Where(p => p.Email == "ana@hackthenorth.ph").Select(p => (Guid?)p.Id).SingleOrDefaultAsync(ct);
+        foreach (var (personId, role) in new[] { (mika, CommitteeRole.Lead), (ana, CommitteeRole.Member) })
+        {
+            if (personId is not { } id) continue;
+            if (await db.CommitteeMembers.AnyAsync(m => m.EventId == con.Id && m.PersonId == id && m.LeftAt == null, ct)) continue;
+            db.CommitteeMembers.Add(CommitteeMember.Join(logistics, id, role, now));
+            if (role == CommitteeRole.Lead) logistics.SetLead(id);
+        }
+
+        foreach (var (name, email, committee) in new (string, string?, Committee?)[]
+                 {
+                     ("Carla Diaz", "carla.diaz@example.ph", logistics),
+                     ("Pia Santos", null, null),
+                 })
+        {
+            if (await db.EventVolunteers.AnyAsync(v => v.EventId == con.Id && v.Name == name, ct)) continue;
+            var volunteer = EventVolunteer.Create(con.Id, name, email, "+639171234567", now);
+            volunteer.AttachTo(committee);
+            db.EventVolunteers.Add(volunteer);
+        }
+        await db.SaveChangesAsync(ct);
+    }
+
+    /// <summary>
+    /// The eleven sample cards of frame 07, spread over the five columns and the six committees of HTN Con 2026, with
+    /// assignees from the seeded people (plus one volunteer as an Assistant, who never earns points) and a checklist
+    /// each. The two Done cards are approved, so their points awards exist and the leaderboard has data to show.
+    /// Skipped entirely once the event has tasks, so re-seeding changes nothing.
+    /// </summary>
+    private static async Task EnsureTasksAsync(HtnDbContext db, TimeProvider clock, CancellationToken ct)
+    {
+        var con = await db.Events.SingleOrDefaultAsync(e => e.Slug == SampleEventSlug, ct);
+        if (con is null || await db.Tasks.AnyAsync(t => t.EventId == con.Id, ct)) return;
+        var settings = await db.OrgSettings.SingleOrDefaultAsync(s => s.Id == OrgSettings.SingletonId, ct);
+        if (settings is null) return;
+
+        var committees = await db.Committees.Where(c => c.EventId == con.Id).ToDictionaryAsync(c => c.Name, ct);
+        var people = await db.People.Where(p => p.Email != null).ToDictionaryAsync(p => p.Email!, p => p.Id, ct);
+        var admin = await db.Users.AsNoTracking().Where(u => u.Email == "alex@hackthenorth.ph")
+            .Select(u => (Guid?)u.Id).SingleOrDefaultAsync(ct);
+        var carla = await db.EventVolunteers.AsNoTracking()
+            .Where(v => v.EventId == con.Id && v.Name == "Carla Diaz").Select(v => (Guid?)v.Id).SingleOrDefaultAsync(ct);
+        var now = clock.GetUtcNow();
+        var manila = TimeSpan.FromHours(8);
+        // Stored in UTC; the UI shows Asia/Manila (5 pm Manila here).
+        DateTimeOffset Due(int month, int day) => new DateTimeOffset(2026, month, day, 17, 0, 0, manila).ToUniversalTime();
+
+        // (column, committee, title, due, checklist steps, steps already done, base points, [role:person])
+        (TaskBoardStatus Status, string Committee, string Title, DateTimeOffset Due, string[] Steps, int Done, int Points,
+            (TaskAssigneeRole Role, string? Email, bool Volunteer)[] Who)[] samples =
+        [
+            (TaskBoardStatus.Backlog, "Marketing", "Speaker teaser videos", Due(11, 14),
+                ["Shortlist speakers", "Write scripts", "Record clips", "Schedule posts"], 0, 30,
+                [(TaskAssigneeRole.Lead, "ken@hackthenorth.ph", false)]),
+            (TaskBoardStatus.Backlog, "Tech & AV", "Livestream test run", Due(11, 18),
+                ["Book the encoder", "Test upload speed", "Dry run with Programs"], 0, 20,
+                [(TaskAssigneeRole.Lead, "ken@hackthenorth.ph", false), (TaskAssigneeRole.Collab, "ana@hackthenorth.ph", false)]),
+            (TaskBoardStatus.ToDo, "Logistics", "Print ID lanyards", Due(11, 9),
+                ["Confirm the count", "Send artwork to the printer"], 0, 20,
+                [(TaskAssigneeRole.Lead, "mika@hackthenorth.ph", false), (TaskAssigneeRole.Assistant, "ana@hackthenorth.ph", false)]),
+            (TaskBoardStatus.ToDo, "Partnerships", "Sponsor deck v2", Due(11, 12),
+                ["Update the tiers", "Refresh the numbers", "Add last year's photos", "Proofread", "Export the PDF"], 1, 25,
+                [(TaskAssigneeRole.Lead, "alex@hackthenorth.ph", false), (TaskAssigneeRole.Collab, "mika@hackthenorth.ph", false)]),
+            (TaskBoardStatus.ToDo, "Programs", "Workshop room assignments", Due(11, 10),
+                ["Collect room needs", "Draft the grid", "Share with Logistics"], 0, 15,
+                [(TaskAssigneeRole.Lead, "mika@hackthenorth.ph", false)]),
+            (TaskBoardStatus.InProgress, "Logistics", "Finalize venue floor plan", Due(11, 2),
+                ["Get SMX CAD file", "Place registration desks", "Place sponsor booths (12)", "Mark power points & exits",
+                    "Share final PDF with Partnerships"], 3, 40,
+                [(TaskAssigneeRole.Lead, "alex@hackthenorth.ph", false), (TaskAssigneeRole.Collab, "mika@hackthenorth.ph", false),
+                    (TaskAssigneeRole.Assistant, "ana@hackthenorth.ph", false)]),
+            (TaskBoardStatus.InProgress, "Programs", "Confirm keynote speakers", Due(11, 5),
+                ["Send invitations", "Chase replies", "Collect bios", "Confirm travel"], 2, 30,
+                [(TaskAssigneeRole.Lead, "ken@hackthenorth.ph", false), (TaskAssigneeRole.Collab, "alex@hackthenorth.ph", false)]),
+            (TaskBoardStatus.InProgress, "Marketing", "Social posts: week 3", Due(11, 6),
+                ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"], 4, 15,
+                [(TaskAssigneeRole.Lead, "mika@hackthenorth.ph", false), (TaskAssigneeRole.Assistant, null, true)]),
+            (TaskBoardStatus.Review, "Registration & Check-in", "Check-in desk staffing plan", Due(11, 4),
+                ["Count the desks", "Draw up the shifts", "Brief the scanners", "Print the cheat sheet"], 4, 20,
+                [(TaskAssigneeRole.Lead, "mika@hackthenorth.ph", false), (TaskAssigneeRole.Assistant, "ana@hackthenorth.ph", false)]),
+            (TaskBoardStatus.Done, "Partnerships", "Send sponsor contracts", Due(10, 28),
+                ["Draft the contract", "Legal check", "Send to Platinum", "Send to Gold", "Send to Silver", "File the signed copies"],
+                6, 35,
+                [(TaskAssigneeRole.Lead, "ken@hackthenorth.ph", false), (TaskAssigneeRole.Collab, "alex@hackthenorth.ph", false),
+                    (TaskAssigneeRole.Assistant, "ana@hackthenorth.ph", false)]),
+            (TaskBoardStatus.Done, "Logistics", "Book venue", Due(10, 20),
+                ["Compare quotes", "Sign the contract", "Pay the deposit"], 3, 50,
+                [(TaskAssigneeRole.Lead, "mika@hackthenorth.ph", false), (TaskAssigneeRole.Collab, "ana@hackthenorth.ph", false)]),
+        ];
+
+        var created = new List<(TaskItem Task, bool Finish)>();
+        var order = new Dictionary<TaskBoardStatus, int>();
+        foreach (var s in samples)
+        {
+            if (!committees.TryGetValue(s.Committee, out var committee)) continue;
+            // A Done card is built in Review and then approved below, which is what writes its awards.
+            var column = s.Status == TaskBoardStatus.Done ? TaskBoardStatus.Review : s.Status;
+            order[column] = order.TryGetValue(column, out var last) ? last + 100 : 100;
+            var task = TaskItem.Create(con.Id, committee.Id, con.NextTaskNumber(), s.Title, null, column, s.Points,
+                s.Due, null, order[column], now, admin);
+            db.Tasks.Add(task);
+            TaskOps.Log(db, task.Id, admin, TaskActivityKinds.Created, $"created this task in {TaskViews.Label(column)}", now);
+            var step = 0;
+            foreach (var text in s.Steps)
+            {
+                var item = TaskChecklistItem.Create(task, text, ++step, now, admin);
+                if (step <= s.Done) item.Toggle(true, now, admin);
+                db.TaskChecklistItems.Add(item);
+            }
+            foreach (var (role, email, volunteer) in s.Who)
+            {
+                if (volunteer)
+                {
+                    if (carla is { } volunteerId) db.TaskAssignees.Add(TaskAssignee.ForVolunteer(task, volunteerId, role, now, admin));
+                    continue;
+                }
+                if (email is not null && people.TryGetValue(email, out var personId))
+                    db.TaskAssignees.Add(TaskAssignee.ForPerson(task, personId, role, now, admin));
+            }
+            created.Add((task, s.Status == TaskBoardStatus.Done));
+        }
+        await db.SaveChangesAsync(ct);
+
+        // Approve the two finished cards: the same path the API takes, so the awards are real snapshots.
+        foreach (var (task, _) in created.Where(c => c.Finish))
+        {
+            task.Approve(now, admin);
+            var awards = await TaskOps.AwardAsync(db, task, settings, now, admin, ct);
+            TaskOps.Log(db, task.Id, admin, TaskActivityKinds.Approved,
+                $"approved it and awarded {TaskOps.PointsText(awards)} points", now);
+        }
+        await db.SaveChangesAsync(ct);
+    }
+
+    /// <summary>
+    /// Sample registrations on HTN Con 2026 across statuses (pending, overdue, paid, paid with STUDENT20, a team of 5,
+    /// a sponsor comp, cancelled), from frame 09. Skipped when the event already has registrations. No emails are queued.
+    /// </summary>
+    private static async Task EnsureRegistrationsAsync(HtnDbContext db, IPublicIdGenerator ids, TimeProvider clock, CancellationToken ct)
+    {
+        var con = await db.Events.AsNoTracking().SingleOrDefaultAsync(e => e.Slug == SampleEventSlug, ct);
+        if (con is null || await db.Registrations.AnyAsync(r => r.EventId == con.Id, ct)) return;
+        var tickets = await db.TicketTypes.AsNoTracking().Where(t => t.EventId == con.Id).ToDictionaryAsync(t => t.Name, ct);
+        var student20 = await db.Vouchers.AsNoTracking().SingleOrDefaultAsync(v => v.EventId == con.Id && v.Code == "STUDENT20", ct);
+        if (!tickets.TryGetValue("Regular", out var regular) || !tickets.TryGetValue("Student", out var student)
+            || !tickets.TryGetValue("Team of 5", out var team) || !tickets.TryGetValue("Sponsor comp", out var comp)) return;
+
+        var now = clock.GetUtcNow();
+        static AttendeeDetails P(string first, string last, string email, string? company = null, string? shirt = "M") =>
+            new(first, null, last, "Prefer not to say", email, "+639171234567", null, company, shirt, "Facebook");
+
+        var admin = await db.Users.AsNoTracking().Where(u => u.Email == "alex@hackthenorth.ph").Select(u => (Guid?)u.Id).SingleOrDefaultAsync(ct);
+
+        Registration Add(TicketType t, AttendeeDetails[] people, Voucher? v, DateTimeOffset at, Guid? manualBy = null)
+        {
+            var reg = Registration.Create(con.Id, t, people, people.Select(_ => ids.NewParticipantId()).ToList(), v,
+                manualBy is null ? RegistrationSource.Public : RegistrationSource.Manual, manualBy, RegistrationForm.ConsentVersion,
+                at.AddHours(48), null, at);
+            db.Registrations.Add(reg);
+            return reg;
+        }
+
+        Add(regular, [P("Maria", "Santos", "maria.santos@example.ph", "DICT Region 1")], null, now.AddHours(-2));
+        Add(regular, [P("Jose", "Dela Cruz", "jose.delacruz@example.ph", "Mariano Marcos State University")], null, now.AddDays(-3)); // overdue
+        var paid = Add(regular, [P("Ana", "Reyes", "ana.reyes@example.ph", "Ilocos Norte Provincial Government", "S")], null, now.AddDays(-5));
+        db.Payments.Add(paid.MarkPaid(PaymentMethod.GCash, null, "Ref 7741 0923", now.AddDays(-4), null, now.AddDays(-4)));
+        if (student20 is not null)
+        {
+            var stu = Add(student, [P("Carlo", "Mendoza", "carlo.mendoza@example.ph", "Northwestern University", "L")], student20, now.AddDays(-2));
+            db.Payments.Add(stu.MarkPaid(PaymentMethod.Bank, null, "BPI 0045 1182", now.AddDays(-1), null, now.AddDays(-1)));
+        }
+        Add(team,
+        [
+            P("Bea", "Garcia", "bea.garcia@example.ph", "Team Hack Ilocos"), P("Dan", "Lim", "dan.lim@example.ph", "Team Hack Ilocos"),
+            P("Eli", "Ramos", "eli.ramos@example.ph", "Team Hack Ilocos"), P("Fe", "Torres", "fe.torres@example.ph", "Team Hack Ilocos"),
+            P("Gab", "Navarro", "gab.navarro@example.ph", "Team Hack Ilocos"),
+        ], null, now.AddHours(-20));
+        if (admin is not null)
+        {
+            var sponsor = Add(comp, [P("Hana", "Villanueva", "hana.villanueva@example.ph", "Sample Sponsor Inc.")], null, now.AddDays(-6), admin);
+            db.Payments.Add(sponsor.MarkPaid(PaymentMethod.Comp, null, null, null, admin, now.AddDays(-6)));
+        }
+        var cancelled = Add(regular, [P("Ivan", "Castillo", "ivan.castillo@example.ph")], null, now.AddDays(-7));
+        cancelled.Cancel("Duplicate registration (sample data).", null, now.AddDays(-6));
+        await db.SaveChangesAsync(ct);
+    }
+
+    /// <summary>
+    /// Enough finance to open frames 24-26 and see something: two accounts to reconcile, a posted entry, one the
+    /// assistant is waiting on, and an expense request. Alex holds the CFO flag so the dev login can post and close,
+    /// and Mika is the finance assistant.
+    /// </summary>
+    /// <summary>
+    /// A few sponsors and tiers on HTN Con 2026 (frame 13), plus one tagged partner, so the screen has data. Each
+    /// piece is skipped when it already exists.
+    /// </summary>
+    private static async Task EnsureSponsorsAsync(HtnDbContext db, TimeProvider clock, CancellationToken ct)
+    {
+        var now = clock.GetUtcNow();
+        var ev = await db.Events.FirstOrDefaultAsync(e => e.Slug == SampleEventSlug, ct);
+        if (ev is null || await db.SponsorTiers.AnyAsync(t => t.EventId == ev.Id, ct)) return;
+
+        var platinum = SponsorTier.Create(ev.Id, new NewSponsorTier(
+            TierClass.Platinum, "Main Stage Partner", 200000m, "or equivalent", null, null, 1, 6, 10,
+            ["Logo on stage backdrop", "10-min keynote slot", "Booth (3 × 3 m)"]), Guid.Empty, now);
+        var gold = SponsorTier.Create(ev.Id, new NewSponsorTier(
+            TierClass.Gold, "Lanyard & ID", 80000m, null, "400 lanyards", 400, 3, 3, 20,
+            ["Logo on lanyard", "Booth (2 × 2 m)", "Social shout-out"]), Guid.Empty, now);
+        db.SponsorTiers.AddRange(platinum, gold);
+
+        var cloudcorp = Sponsor.Create(ev.Id, new NewSponsor(
+            SponsorKind.Organization, "CloudCorp PH", null, false, "Kai Cruz", "Partnerships", null, null,
+            platinum.Id, 200000m, null, null, 6, "https://cloudcorp.ph"), Guid.Empty, now);
+        cloudcorp.Confirm(Guid.Empty, now);
+        var securebank = Sponsor.Create(ev.Id, new NewSponsor(
+            SponsorKind.Organization, "SecureBank", null, false, "Marco Dy", "CISO", null, null,
+            gold.Id, 80000m, "lanyards", 400, 3, null), Guid.Empty, now);
+        var donor = Sponsor.Create(ev.Id, new NewSponsor(
+            SponsorKind.Individual, "Ramon Villanueva", "Ramon Villanueva", false, null, null, null, null,
+            null, 25000m, null, null, 1, null), Guid.Empty, now);
+        donor.Confirm(Guid.Empty, now);
+        db.Sponsors.AddRange(cloudcorp, securebank, donor);
+
+        db.EventPartners.Add(EventPartner.Tag(ev.Id, "DICT", "Government agency", Guid.Empty, now));
+        await db.SaveChangesAsync(ct);
+    }
+
+    /// <summary>A couple of sponsor and speaker leads on HTN Con 2026 (frame 17), so the board has data.</summary>
+    private static async Task EnsureLeadsAsync(HtnDbContext db, TimeProvider clock, CancellationToken ct)
+    {
+        var now = clock.GetUtcNow();
+        var ev = await db.Events.FirstOrDefaultAsync(e => e.Slug == SampleEventSlug, ct);
+        if (ev is null || await db.Leads.AnyAsync(l => l.EventId == ev.Id, ct)) return;
+
+        var due = ManilaTime.ManilaDate(now).AddDays(-2);
+        var globe = Lead.Create(ev.Id, new NewLead(LeadKind.Sponsor, "Globe Business", "Rina Cruz", "Partnerships Mgr",
+            null, null, null, 100000m, "Gold", null, "Follow up", due), Guid.Empty, now);
+        var devtools = Lead.Create(ev.Id, new NewLead(LeadKind.Sponsor, "DevTools Inc.", "Mae Torres", "DevRel",
+            null, null, null, 120000m, "Workshop Track", null, "Call", ManilaTime.ManilaDate(now).AddDays(3)), Guid.Empty, now);
+        devtools.MoveTo(LeadStatus.InTalks, null, Guid.Empty, now);
+        var gomez = Lead.Create(ev.Id, new NewLead(LeadKind.Speaker, "Dr. Lara Gomez", "DICT", "Undersecretary",
+            "lara.gomez@dict.gov.ph", null, null, null, "Keynote: state of PH cybersecurity", null, "Find secretary contact", null), Guid.Empty, now);
+        db.Leads.AddRange(globe, devtools, gomez);
+        await db.SaveChangesAsync(ct);
+    }
+
+    /// <summary>
+    /// Phase 7A (frame 13-equivalent): a government agency, a company and a university in the global directory, one
+    /// with a contact verified recently and one with a contact unverified for over 90 days, so "Needs check" shows.
+    /// </summary>
+    private static async Task EnsureDirectoryAsync(HtnDbContext db, TimeProvider clock, CancellationToken ct)
+    {
+        var now = clock.GetUtcNow();
+        if (await db.DirectoryOrgs.AnyAsync(ct)) return;
+
+        var dict = DirectoryOrg.Create(
+            new NewDirectoryOrg(DirectoryOrgKind.Government, "Department of Information and Communications Technology",
+                "The Secretary", "https://dict.gov.ph", "National ICT policy agency."), Guid.Empty, now);
+        var cloudcorp = DirectoryOrg.Create(
+            new NewDirectoryOrg(DirectoryOrgKind.Company, "CloudCorp PH", null, "https://cloudcorp.ph", null), Guid.Empty, now);
+        var university = DirectoryOrg.Create(
+            new NewDirectoryOrg(DirectoryOrgKind.University, "University of the Philippines Diliman", "The Chancellor",
+                "https://upd.edu.ph", "Partner campus for recruitment drives."), Guid.Empty, now);
+        db.DirectoryOrgs.AddRange(dict, cloudcorp, university);
+
+        // Verified two days ago: not due for a check.
+        var dictContact = DirectoryContact.Create(dict.Id,
+            new NewDirectoryContact("Undersecretary", "Dr. Lara Gomez", "lara.gomez@dict.gov.ph", null, true, null),
+            Guid.Empty, now);
+        dictContact.StillCorrect(Guid.Empty, now.AddDays(-2));
+
+        var cloudcorpContact = DirectoryContact.Create(cloudcorp.Id,
+            new NewDirectoryContact("Partnerships", "Kai Cruz", "kai.cruz@cloudcorp.ph", "+639171234567", true, "finance@cloudcorp.ph"),
+            Guid.Empty, now);
+        cloudcorpContact.StillCorrect(Guid.Empty, now.AddDays(-5));
+
+        // Verified 120 days ago: stale, so this org needs a check.
+        var universityContact = DirectoryContact.Create(university.Id,
+            new NewDirectoryContact("Director, Student Affairs", "Prof. Ana Reyes", "ana.reyes@upd.edu.ph", null, true, null),
+            Guid.Empty, now);
+        universityContact.StillCorrect(Guid.Empty, now.AddDays(-120));
+        db.DirectoryContacts.AddRange(dictContact, cloudcorpContact, universityContact);
+
+        await db.SaveChangesAsync(ct);
+        db.DirectoryContactHistory.Add(DirectoryContactHistory.StillCorrect(dict.Id, dictContact.Id, Guid.Empty, now.AddDays(-2)));
+        db.DirectoryContactHistory.Add(DirectoryContactHistory.StillCorrect(cloudcorp.Id, cloudcorpContact.Id, Guid.Empty, now.AddDays(-5)));
+        db.DirectoryContactHistory.Add(DirectoryContactHistory.StillCorrect(university.Id, universityContact.Id, Guid.Empty, now.AddDays(-120)));
+        await db.SaveChangesAsync(ct);
+    }
+
+    /// <summary>
+    /// Phase 7B: a letter template on HTN Con 2026, plus one <c>NotSent</c> pick (the stale UP Diliman org, so the
+    /// "verify first" affordance has something to show) and one already <c>Sent</c> (to DICT's verified contact).
+    /// </summary>
+    private static async Task EnsureInvitationsAsync(HtnDbContext db, TimeProvider clock, CancellationToken ct)
+    {
+        var now = clock.GetUtcNow();
+        var ev = await db.Events.FirstOrDefaultAsync(e => e.Slug == SampleEventSlug, ct);
+        if (ev is null || await db.EventInvitations.AnyAsync(i => i.EventId == ev.Id, ct)) return;
+
+        var dict = await db.DirectoryOrgs.FirstOrDefaultAsync(o => o.Name.StartsWith("Department of Information"), ct);
+        var university = await db.DirectoryOrgs.FirstOrDefaultAsync(o => o.Name.Contains("Diliman"), ct);
+        if (dict is null || university is null) return;
+
+        var template = EventInvitationTemplate.Create(ev.Id,
+            new NewEventInvitationTemplate(
+                "Invitation to HTN Con 2026 on [date]",
+                "Dear [addressee.salutation] [addressee.name],\n\n" +
+                "On behalf of HackTheNorth.PH, we are honored to invite your organization, represented by you as " +
+                "[addressee.position], to HTN Con 2026 on [date].\n\n" +
+                "We look forward to your confirmation."),
+            Guid.Empty, now);
+        db.EventInvitationTemplates.Add(template);
+
+        // NotSent: UP Diliman is picked but its contact is stale, so this one needs a check before it can be sent.
+        var pending = EventInvitation.Create(ev.Id, university.Id, Guid.Empty, now);
+        db.EventInvitations.Add(pending);
+
+        // Sent: DICT's contact was verified, so the letter already went out.
+        var dictContact = await db.DirectoryContacts.FirstAsync(c => c.OrgId == dict.Id && c.IsPrimary, ct);
+        var addressee = new InvitationAddressee(dictContact.HolderName, dictContact.Position, dict.AddresseeSalutation);
+        var merged = InvitationMerge.Merge(template.Subject, template.Body, addressee, ev.StartsAt);
+        var sent = EventInvitation.Create(ev.Id, dict.Id, Guid.Empty, now.AddDays(-1));
+        sent.Send(dictContact.Id, dictContact.Email, dictContact.HolderName, merged.Subject, merged.Body, contactIsVerified: true, Guid.Empty, now.AddDays(-1));
+        db.EventInvitations.Add(sent);
+        db.InvitationEvents.Add(InvitationEvent.Create(sent.Id, InvitationStatus.Sent, null, now.AddDays(-1)));
+
+        await db.SaveChangesAsync(ct);
+    }
+
+    /// <summary>
+    /// Phase 7C (frame 18c-equivalent): three suppliers across categories, a BIR 2303 on one, and two hires on HTN
+    /// Con 2026 — one <c>DepositPaid</c> tied to the seeded Logistics committee (whose lead is Mika), so the
+    /// rate-suppliers flow is exercisable once the event has ended, and one plain <c>Quotation</c> to show the
+    /// delete-while-Quotation affordance.
+    /// </summary>
+    private static async Task EnsureSuppliersAsync(HtnDbContext db, TimeProvider clock, CancellationToken ct)
+    {
+        var now = clock.GetUtcNow();
+        if (await db.Suppliers.AnyAsync(ct)) return;
+
+        var venue = Supplier.Create(
+            new NewSupplier(SupplierCategory.Venue, "SMX Convention Center", "Events Desk", "events@smxconvention.com",
+                "+6328561234", true, "123-456-789-000", "BDO 001-234-567-890", null),
+            Guid.Empty, now);
+        var catering = Supplier.Create(
+            new NewSupplier(SupplierCategory.Catering, "Manila Catering Co.", "Nina Flores", "nina@manilacatering.ph",
+                "+639181234567", true, "234-567-890-000", "BPI 002-345-678-901", "Halal options available."),
+            Guid.Empty, now);
+        var printing = Supplier.Create(
+            new NewSupplier(SupplierCategory.Printing, "QuickPrint PH", null, "orders@quickprint.ph", null, false, null, null, null),
+            Guid.Empty, now);
+        db.Suppliers.AddRange(venue, catering, printing);
+        await db.SaveChangesAsync(ct);
+
+        var stored = StoredFile.Create("application/pdf", 1024, new string('0', 64), StoredFilePurposes.SupplierDocument, "bir-2303.pdf", now, Guid.Empty);
+        db.StoredFiles.Add(stored);
+        db.SupplierDocuments.Add(SupplierDocument.Create(venue.Id, SupplierDocumentKind.Bir2303, stored.Id, Guid.Empty, now));
+
+        // Two dev-only expense categories for the hires — no seeded system LedgerCategory means "venue"/"catering".
+        var venueCategory = LedgerCategory.Create("venue", "Venue", BudgetLineKind.Expense, 100, now);
+        var cateringCategory = LedgerCategory.Create("catering", "Catering", BudgetLineKind.Expense, 101, now);
+        db.LedgerCategories.AddRange(venueCategory, cateringCategory);
+
+        var ev = await db.Events.FirstOrDefaultAsync(e => e.Slug == SampleEventSlug, ct);
+        var logistics = ev is null ? null : await db.Committees.FirstOrDefaultAsync(c => c.EventId == ev.Id && c.Name == "Logistics", ct);
+        if (ev is not null && logistics is not null)
+        {
+            var booked = EventSupplier.Create(ev.Id,
+                new NewEventSupplierHire(venue.Id, venueCategory.Id, logistics.Id, "Main hall for HTN Con 2026."), Guid.Empty, now);
+            booked.Update(
+                new UpdateEventSupplierHire(180_000m, 90_000m, 90_000m, DateOnly.FromDateTime(ev.StartsAt.AddDays(-7).Date), booked.Note),
+                Guid.Empty, now);
+            booked.Advance(SupplierHireStatus.Booked, Guid.Empty, now);
+            booked.Advance(SupplierHireStatus.DepositPaid, Guid.Empty, now);
+            db.EventSuppliers.Add(booked);
+
+            var quoted = EventSupplier.Create(ev.Id,
+                new NewEventSupplierHire(catering.Id, cateringCategory.Id, logistics.Id, "Awaiting final headcount."), Guid.Empty, now);
+            db.EventSuppliers.Add(quoted);
+        }
+
+        await db.SaveChangesAsync(ct);
+    }
+
+    /// <summary>Two rooms and a few sessions on HTN Con 2026 (frame 16), one with a tentative (invited) speaker.</summary>
+    private static async Task EnsureAgendaAsync(HtnDbContext db, TimeProvider clock, CancellationToken ct)
+    {
+        var now = clock.GetUtcNow();
+        var ev = await db.Events.FirstOrDefaultAsync(e => e.Slug == SampleEventSlug, ct);
+        if (ev is null || await db.Sessions.AnyAsync(x => x.EventId == ev.Id, ct)) return;
+
+        var manila = TimeSpan.FromHours(8);
+        var main = EventRoom.Create(ev.Id, "Main Hall", "#B71C1C", 0, now);
+        var workshop = EventRoom.Create(ev.Id, "Workshop Room A", "#0D9488", 1, now);
+        db.EventRooms.AddRange(main, workshop);
+
+        var opening = Session.Create(ev.Id, new NewSession("Opening remarks", SessionKind.Talk,
+            new DateTimeOffset(2026, 11, 22, 9, 0, 0, manila), 15, null, true, null), Guid.Empty, now);
+        var keynote = Session.Create(ev.Id, new NewSession("The state of Philippine cybersecurity", SessionKind.Keynote,
+            new DateTimeOffset(2026, 11, 22, 9, 15, 0, manila), 45, null, true, null), Guid.Empty, now);
+        var workshopSession = Session.Create(ev.Id, new NewSession("Hands-on: web app pentesting", SessionKind.Workshop,
+            new DateTimeOffset(2026, 11, 22, 10, 15, 0, manila), 90, null, true, null), Guid.Empty, now);
+        db.Sessions.AddRange(opening, keynote, workshopSession);
+        db.SessionRooms.AddRange(
+            SessionRoom.Create(opening.Id, main.Id, ev.Id),
+            SessionRoom.Create(keynote.Id, main.Id, ev.Id),
+            SessionRoom.Create(workshopSession.Id, workshop.Id, ev.Id));
+
+        // A directly-created (Invited) speaker makes the workshop read as tentative.
+        var mae = Speaker.Create(ev.Id, "Mae Torres", "mae.torres@devtools.io", "DevTools Inc.", Guid.Empty, now);
+        db.Speakers.Add(mae);
+        db.SessionSpeakers.Add(SessionSpeaker.Create(workshopSession.Id, mae.Id, ev.Id, SessionSpeakerRole.Speaker, 0));
+        await db.SaveChangesAsync(ct);
+    }
+
+    /// <summary>Sets HTN Con 2026's travel mode to Plane (frame 05/22/23), so the public form shows the flight fields.</summary>
+    private static async Task EnsureSpeakerTravelModeAsync(HtnDbContext db, TimeProvider clock, CancellationToken ct)
+    {
+        var ev = await db.Events.FirstOrDefaultAsync(e => e.Slug == SampleEventSlug, ct);
+        if (ev is null || ev.TravelMode != Htn.Domain.Events.TravelMode.None) return;
+        ev.UpdateTravelSettings(Htn.Domain.Events.TravelMode.Plane, clock.GetUtcNow(), null);
+        await db.SaveChangesAsync(ct);
+    }
+
+    private static async Task EnsureFinanceAsync(
+        HtnDbContext db, UserManager<AppUser> users, IFileStorage storage, TimeProvider clock, CancellationToken ct)
+    {
+        var now = clock.GetUtcNow();
+        var today = ManilaTime.ManilaDate(now);
+
+        // The CFO and the finance assistant. Both are flags on the login, unique in the database.
+        var cfo = await users.FindByEmailAsync("alex@hackthenorth.ph");
+        if (cfo is { IsCfo: false } && !await db.Users.AnyAsync(u => u.IsCfo, ct))
+        {
+            cfo.IsCfo = true;
+            await users.UpdateAsync(cfo);
+        }
+        var assistant = await users.FindByEmailAsync("mika@hackthenorth.ph");
+        if (assistant is { IsFinanceAssistant: false } && !await db.Users.AnyAsync(u => u.IsFinanceAssistant, ct))
+        {
+            assistant.IsFinanceAssistant = true;
+            await users.UpdateAsync(assistant);
+        }
+
+        if (!await db.PaymentAccounts.AnyAsync(ct))
+        {
+            var gcash = PaymentAccount.Create(PaymentAccountKind.GCash, "GCash main", null, "HackTheNorth PH", "09171234567", now);
+            gcash.SetDefault(true);
+            gcash.SetFinanceSetup(5_000m, today.AddMonths(-1), isReconcilable: true);
+            var cash = PaymentAccount.Create(PaymentAccountKind.Cash, "Cash on hand", null, "Registration desk", null, now);
+            cash.SetFinanceSetup(2_000m, today.AddMonths(-1), isReconcilable: true);
+            db.PaymentAccounts.AddRange(gcash, cash);
+            await db.SaveChangesAsync(ct);
+        }
+
+        if (await db.LedgerEntries.AnyAsync(e => e.Source == LedgerSource.Manual, ct)) return;
+
+        var account = await db.PaymentAccounts.AsNoTracking()
+            .Where(a => a.IsActive && a.Kind == PaymentAccountKind.GCash)
+            .Select(a => a.Id).FirstOrDefaultAsync(ct);
+        if (account == Guid.Empty) return;
+        var org = await db.Funds.FirstOrDefaultAsync(f => f.Id == Funds.OrganizationId, ct);
+        if (org is null) return;
+
+        // A hand-entered row always carries a receipt, so the bytes are written too: the download has to work.
+        var receipt = await ReceiptAsync(db, storage, cfo?.Id, now, ct);
+        var pendingReceipt = await ReceiptAsync(db, storage, assistant?.Id, now, ct);
+
+        db.LedgerEntries.Add(LedgerEntry.Posted(
+            new NewLedgerEntry(org.Id, account, LedgerCategories.WriteOffId, today.AddDays(-9), LedgerDirection.Out,
+                4_500m, "OR-2041", "Domain renewal and hosting", receipt, LedgerSource.Manual, null),
+            cfo?.Id, now));
+        db.LedgerEntries.Add(LedgerEntry.Pending(
+            new NewLedgerEntry(org.Id, account, LedgerCategories.WriteOffId, today.AddDays(-2), LedgerDirection.Out,
+                1_250m, null, "Printing for the orientation", pendingReceipt, LedgerSource.Manual, null),
+            assistant?.Id ?? Guid.Empty, now));
+
+        var requester = await db.People.AsNoTracking()
+            .Where(p => p.Email == "leo@hackthenorth.ph").Select(p => p.Id).FirstOrDefaultAsync(ct);
+        if (requester != Guid.Empty)
+        {
+            db.ExpenseRequests.Add(ExpenseRequest.Create("Year-end party", "Venue and food for the whole team",
+                40_000m, LedgerCategories.WriteOffId, today.AddMonths(2), requester, now));
+        }
+
+        await db.SaveChangesAsync(ct);
+    }
+
+    /// <summary>A 1x1 PNG on disk plus its metadata row, so a seeded receipt can actually be downloaded.</summary>
+    private static async Task<Guid> ReceiptAsync(
+        HtnDbContext db, IFileStorage storage, Guid? actorId, DateTimeOffset at, CancellationToken ct)
+    {
+        var bytes = Convert.FromBase64String(
+            "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFAAH/q842iQAAAABJRU5ErkJggg==");
+        var file = StoredFile.Create(FileSignatures.PngContentType, bytes.LongLength,
+            Convert.ToHexStringLower(System.Security.Cryptography.SHA256.HashData(bytes)),
+            StoredFilePurposes.FinanceReceipt, "receipt.png", at, actorId);
+        await storage.SaveAsync(file.Id, bytes, ct);
+        db.StoredFiles.Add(file);
+        return file.Id;
+    }
+}

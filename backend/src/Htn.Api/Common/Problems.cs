@@ -1,0 +1,35 @@
+using Microsoft.AspNetCore.Mvc;
+
+namespace Htn.Api.Common;
+
+public static class Problems
+{
+    public static async Task WriteAsync(HttpContext context, int status, string title, string? detail = null, string? code = null)
+    {
+        context.Response.StatusCode = status;
+        var problem = new ProblemDetails { Status = status, Title = title, Detail = detail };
+        if (code is not null) problem.Extensions["code"] = code;
+        var service = context.RequestServices.GetRequiredService<IProblemDetailsService>();
+        if (!await service.TryWriteAsync(new ProblemDetailsContext { HttpContext = context, ProblemDetails = problem }))
+            await context.Response.WriteAsJsonAsync(problem);
+    }
+
+    public static IResult Result(int status, string title, string? detail = null, string? code = null) =>
+        TypedResults.Problem(statusCode: status, title: title, detail: detail,
+            extensions: code is null ? null : new Dictionary<string, object?> { ["code"] = code });
+
+    /// <summary>Like <see cref="Result"/>, with extra machine-readable fields alongside <c>code</c> (e.g. attemptsLeft, lockedUntil).</summary>
+    public static IResult Result(int status, string title, string? detail, string code, IDictionary<string, object?> extra)
+    {
+        var ext = new Dictionary<string, object?>(extra) { ["code"] = code };
+        return TypedResults.Problem(statusCode: status, title: title, detail: detail, extensions: ext);
+    }
+
+    public static IResult Field(string field, string message) =>
+        TypedResults.ValidationProblem(new Dictionary<string, string[]> { [field] = [message] });
+
+    /// <summary>400 ValidationProblem for one field, plus a machine-readable <c>code</c> extension.</summary>
+    public static IResult Field(string field, string message, string code) =>
+        TypedResults.ValidationProblem(new Dictionary<string, string[]> { [field] = [message] },
+            extensions: new Dictionary<string, object?> { ["code"] = code });
+}
