@@ -1,17 +1,24 @@
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
+using System.Text.Json;
 using System.Text.Json.Serialization;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
 
 namespace Htn.Infrastructure.Email;
 
-/// <summary>Sends through the Mailtrap Email API. Retries (429/5xx) come from the resilience handler on the typed client.</summary>
-public sealed class MailtrapEmailSender(HttpClient http, IOptions<MailtrapOptions> options, ILogger<MailtrapEmailSender> logger) : IEmailSender
+/// <summary>
+/// Sends through the Mailtrap Email API. Retries (429/5xx) come from the resilience handler on the typed client. The
+/// settings are resolved per send (saved in Settings, else environment); with no token anywhere it hands the message
+/// to <see cref="LoggingEmailSender"/>.
+/// </summary>
+public sealed partial class MailtrapEmailSender(
+    HttpClient http, IMailtrapConfigProvider config, LoggingEmailSender fallback, ILogger<MailtrapEmailSender> logger) : IEmailSender
 {
     public async Task<EmailSendResult> SendAsync(EmailMessage message, CancellationToken ct)
     {
-        var o = options.Value;
+        var effective = await config.GetAsync(ct);
+        var o = effective.Options;
+        if (!o.IsConfigured) return await fallback.SendAsync(message, ct);
         var from = o.FromAddress();
         var replyTo = string.IsNullOrWhiteSpace(o.ReplyTo) ? null : new System.Net.Mail.MailAddress(o.ReplyTo);
         var body = new MailtrapRequest(
@@ -30,8 +37,7 @@ public sealed class MailtrapEmailSender(HttpClient http, IOptions<MailtrapOption
         if (!response.IsSuccessStatusCode)
         {
             var text = await response.Content.ReadAsStringAsync(ct);
-            if (text.Length > 500) text = text[..500];
-            throw new HttpRequestException($"Mailtrap returned {(int)response.StatusCode}: {text}", null, response.StatusCode);
+            throw new HttpRequestException($"Mailtrap returned {(int)response.StatusCode}: {ErrorSummary(text)}", null, response.StatusCode);
         }
 
         var result = await response.Content.ReadFromJsonAsync<MailtrapResponse>(ct);
@@ -39,6 +45,44 @@ public sealed class MailtrapEmailSender(HttpClient http, IOptions<MailtrapOption
         logger.LogInformation("Mailtrap accepted {Category} email, message id {MessageId}", message.Category, id);
         return new EmailSendResult(id);
     }
+
+    public const int ErrorSummaryMaxLength = 200;
+
+    /// <summary>
+    /// The first error from a Mailtrap error body (<c>{"errors":[...]}</c> or <c>{"error":"..."}</c>), shortened, with
+    /// email addresses masked. A body that isn't Mailtrap JSON is not echoed (it could be an HTML page or carry data).
+    /// </summary>
+    public static string ErrorSummary(string? body)
+    {
+        string? first = null;
+        try
+        {
+            using var doc = JsonDocument.Parse(string.IsNullOrWhiteSpace(body) ? "{}" : body);
+            if (doc.RootElement.ValueKind == JsonValueKind.Object)
+            {
+                if (doc.RootElement.TryGetProperty("errors", out var errors))
+                    first = errors.ValueKind switch
+                    {
+                        JsonValueKind.Array when errors.GetArrayLength() > 0 => errors[0].ToString(),
+                        JsonValueKind.String => errors.GetString(),
+                        JsonValueKind.Object => errors.EnumerateObject().Select(p => $"{p.Name}: {p.Value}").FirstOrDefault(),
+                        _ => null,
+                    };
+                else if (doc.RootElement.TryGetProperty("error", out var error))
+                    first = error.ToString();
+            }
+        }
+        catch (JsonException)
+        {
+            first = null;
+        }
+        if (string.IsNullOrWhiteSpace(first)) return "no error details";
+        first = EmailPattern().Replace(first, m => Htn.Domain.Common.EmailMask.Mask(m.Value)).ReplaceLineEndings(" ");
+        return first.Length > ErrorSummaryMaxLength ? first[..ErrorSummaryMaxLength] + "…" : first;
+    }
+
+    [System.Text.RegularExpressions.GeneratedRegex(@"[^\s@""'<>,;:()]+@[^\s@""'<>,;:()]+")]
+    private static partial System.Text.RegularExpressions.Regex EmailPattern();
 
     private sealed record MailtrapAddress(
         [property: JsonPropertyName("email")] string Email,

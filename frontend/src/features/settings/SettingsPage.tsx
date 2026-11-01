@@ -12,10 +12,11 @@ import { SegmentedControl } from '@/components/ui/SegmentedControl'
 import { ChevronRightIcon } from '@/components/ui/icons'
 import { cn } from '@/lib/cn'
 import { BrandingSection, OrgThemeSection } from './components/BrandingSection'
+import { EmailDeliverySection } from './components/EmailDeliverySection'
 import { PaymentAccountsSection } from './components/PaymentAccountsSection'
 import { PointsSection } from './components/PointsSection'
 
-type SectionId = 'appearance' | 'points' | 'payments' | 'branding'
+type SectionId = 'appearance' | 'points' | 'payments' | 'branding' | 'email'
 
 /** Left section nav (canvas frame 15). Org-wide sections need Settings.Manage; the API enforces it too. */
 const sections: ReadonlyArray<{ id: SectionId; label: string; manage: boolean }> = [
@@ -23,6 +24,7 @@ const sections: ReadonlyArray<{ id: SectionId; label: string; manage: boolean }>
   { id: 'points', label: 'Points', manage: true },
   { id: 'payments', label: 'Payment accounts', manage: true },
   { id: 'branding', label: 'Email branding', manage: true },
+  { id: 'email', label: 'Email delivery', manage: true },
 ]
 
 const navItemClass = 'flex min-h-10 items-center gap-2 rounded-md px-3 text-sm'
@@ -104,6 +106,7 @@ export function SettingsPage() {
           {current === 'points' ? <PointsSection /> : null}
           {current === 'payments' ? <PaymentAccountsSection /> : null}
           {current === 'branding' ? <BrandingSection /> : null}
+          {current === 'email' ? <EmailDeliverySection /> : null}
         </div>
       </div>
     </>

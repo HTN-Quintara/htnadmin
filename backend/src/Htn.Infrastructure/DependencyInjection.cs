@@ -60,25 +60,23 @@ public static class DependencyInjection
         services.AddScoped<Htn.Infrastructure.Retention.SpeakerDataRetention>();
         services.AddHostedService<Htn.Infrastructure.Retention.SpeakerDataRetentionWorker>();
 
-        if (MailtrapOptions.FromConfiguration(configuration).IsConfigured)
-        {
-            services.AddHttpClient<IEmailSender, MailtrapEmailSender>(c => c.Timeout = TimeSpan.FromSeconds(60))
-                .AddStandardResilienceHandler(o =>
-                {
-                    o.Retry.MaxRetryAttempts = 3;
-                    o.Retry.BackoffType = DelayBackoffType.Exponential;
-                    o.Retry.UseJitter = true;
-                    o.Retry.Delay = TimeSpan.FromSeconds(1);
-                    // Only 429 and 5xx (and transport errors) are retried.
-                    o.Retry.ShouldHandle = args => ValueTask.FromResult(
-                        args.Outcome.Exception is HttpRequestException or Polly.Timeout.TimeoutRejectedException ||
-                        args.Outcome.Result is { } r && ((int)r.StatusCode == 429 || (int)r.StatusCode >= 500));
-                });
-        }
-        else
-        {
-            services.AddSingleton<IEmailSender, LoggingEmailSender>();
-        }
+        // Always the Mailtrap client: the token may be saved in Settings (encrypted) rather than in the environment.
+        // With no token anywhere the sender falls back to LoggingEmailSender per message.
+        services.AddSingleton<IEmailTokenProtector, DataProtectionEmailTokenProtector>();
+        services.AddSingleton<IMailtrapConfigProvider, MailtrapConfigProvider>();
+        services.AddSingleton<LoggingEmailSender>();
+        services.AddHttpClient<IEmailSender, MailtrapEmailSender>(c => c.Timeout = TimeSpan.FromSeconds(60))
+            .AddStandardResilienceHandler(o =>
+            {
+                o.Retry.MaxRetryAttempts = 3;
+                o.Retry.BackoffType = DelayBackoffType.Exponential;
+                o.Retry.UseJitter = true;
+                o.Retry.Delay = TimeSpan.FromSeconds(1);
+                // Only 429 and 5xx (and transport errors) are retried.
+                o.Retry.ShouldHandle = args => ValueTask.FromResult(
+                    args.Outcome.Exception is HttpRequestException or Polly.Timeout.TimeoutRejectedException ||
+                    args.Outcome.Result is { } r && ((int)r.StatusCode == 429 || (int)r.StatusCode >= 500));
+            });
 
         return services;
     }

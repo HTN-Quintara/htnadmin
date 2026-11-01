@@ -51,15 +51,16 @@ public sealed class HostingSetupTests
         Assert.Equal(expected, DevSeeder.ShouldRun(new FakeEnvironment(env), Config((DevSeeder.ConfigKey, flag))));
 
     [Fact]
-    public void Missing_mailtrap_token_fails_outside_development()
+    public void Missing_mailtrap_token_warns_outside_development()
     {
-        var ex = Assert.Throws<InvalidOperationException>(() =>
-            HostingSetup.EnsureEmailConfigured(Config(), new FakeEnvironment("Production")));
-        Assert.Contains("MAILTRAP_API_TOKEN", ex.Message, StringComparison.Ordinal);
+        // The token may be saved in Settings (database), so startup only warns.
+        var warning = HostingSetup.EnsureEmailConfigured(Config(), new FakeEnvironment("Production"));
+        Assert.NotNull(warning);
+        Assert.Contains("MAILTRAP_API_TOKEN", warning, StringComparison.Ordinal);
 
-        HostingSetup.EnsureEmailConfigured(Config(), new FakeEnvironment("Development"));
-        HostingSetup.EnsureEmailConfigured(Config(("MAILTRAP_API_TOKEN", "x")), new FakeEnvironment("Production"));
-        HostingSetup.EnsureEmailConfigured(Config((HostingSetup.EmailAllowLoggingSender, "true")), new FakeEnvironment("Staging"));
+        Assert.Null(HostingSetup.EnsureEmailConfigured(Config(), new FakeEnvironment("Development")));
+        Assert.Null(HostingSetup.EnsureEmailConfigured(Config(("MAILTRAP_API_TOKEN", "x")), new FakeEnvironment("Production")));
+        Assert.Null(HostingSetup.EnsureEmailConfigured(Config((HostingSetup.EmailAllowLoggingSender, "true")), new FakeEnvironment("Staging")));
     }
 
     [Fact]
@@ -116,7 +117,7 @@ public sealed class HostingSetupTests
     public async Task Logging_sender_masks_recipient_and_omits_body_outside_development()
     {
         var logger = new CapturingLogger();
-        var sender = new LoggingEmailSender(logger, new FakeEnvironment("Staging"));
+        var sender = new LoggingEmailSender(logger, new FakeEnvironment("Staging"), Config((HostingSetup.EmailAllowLoggingSender, "true")));
         await sender.SendAsync(new EmailMessage("mika@hackthenorth.ph", "Mika", "Reset your password", "<p>x</p>",
             "https://admin.test/reset/secret-token", "password_reset"), CancellationToken.None);
 
@@ -124,6 +125,11 @@ public sealed class HostingSetupTests
         Assert.Contains("m•••@hackthenorth.ph", line, StringComparison.Ordinal);
         Assert.DoesNotContain("mika@", line, StringComparison.Ordinal);
         Assert.DoesNotContain("secret-token", line, StringComparison.Ordinal);
+
+        // Without the opt-in, an unconfigured sender throws so the outbox keeps (and retries) the message.
+        var strict = new LoggingEmailSender(logger, new FakeEnvironment("Production"), Config());
+        await Assert.ThrowsAsync<InvalidOperationException>(() => strict.SendAsync(
+            new EmailMessage("a@example.ph", null, "S", "<p>x</p>", "x", "test"), CancellationToken.None));
     }
 
     private sealed class CapturingLogger : ILogger<LoggingEmailSender>

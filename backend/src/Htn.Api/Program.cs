@@ -43,7 +43,7 @@ builder.Services.AddOptions<AuthSettings>().BindConfiguration(AuthSettings.Secti
 builder.Services.AddOptions<RateLimitSettings>().BindConfiguration(RateLimitSettings.Section);
 
 // ---- Fail fast on unsafe deployment configuration ----
-HostingSetup.EnsureEmailConfigured(builder.Configuration, builder.Environment);
+var emailWarning = HostingSetup.EnsureEmailConfigured(builder.Configuration, builder.Environment);
 // Links in emails carry tokens: outside Development they must be https.
 HostingSetup.EnsurePublicBaseUrl(builder.Configuration, builder.Environment);
 // Ticket QR codes are HMAC-signed with TICKET_SIGNING_KEY; outside Development a missing or short key stops startup.
@@ -148,9 +148,11 @@ builder.Services.AddScoped<AccountProvisioning>();
 builder.Services.AddScoped<Checkout>();
 // Posts ticket payments, reversals and paid expense requests into the ledger (slice 5).
 builder.Services.AddScoped<AutoPost>();
-builder.Services.AddHealthChecks().AddDbContextCheck<HtnDbContext>("db");
+builder.Services.AddHealthChecks().AddDbContextCheck<HtnDbContext>("db")
+    .AddCheck<EmailDeliveryHealthCheck>("email", tags: ["email"]);
 
 var app = builder.Build();
+if (emailWarning is not null) app.Logger.LogWarning("{Warning}", emailWarning);
 
 app.UseForwardedHeaders();
 app.UseExceptionHandler();
@@ -169,6 +171,7 @@ app.MapPositions();
 app.MapFinanceRoles();
 app.MapPreferences();
 app.MapOrgSettings();
+app.MapEmailDelivery();
 app.MapPaymentAccounts();
 app.MapFiles();
 app.MapPublicFiles();

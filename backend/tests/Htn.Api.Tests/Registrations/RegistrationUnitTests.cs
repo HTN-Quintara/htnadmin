@@ -121,7 +121,9 @@ public sealed class MailtrapAttachmentTests
     {
         var capture = new Capture();
         var sender = new MailtrapEmailSender(new HttpClient(capture),
-            Options.Create(new MailtrapOptions { ApiToken = "token", Mode = "live", ReplyTo = "Team <team@example.ph>" }), NullLogger<MailtrapEmailSender>.Instance);
+            new FixedMailtrapConfig(new MailtrapOptions { ApiToken = "token", Mode = "live", ReplyTo = "Team <team@example.ph>" }),
+            new LoggingEmailSender(NullLogger<LoggingEmailSender>.Instance, new FakeEnvironment("Testing"), new ConfigurationBuilder().Build()),
+            NullLogger<MailtrapEmailSender>.Instance);
         var result = await sender.SendAsync(new EmailMessage("a@example.ph", "A", "Subject", "<img src=\"cid:ticket-qr\">", "text", "ticket",
             [new EmailAttachment("ticket-qr.png", "image/png", [1, 2, 3], "ticket-qr"), new EmailAttachment("event.ics", "text/calendar", "BEGIN"u8.ToArray())]),
             CancellationToken.None);

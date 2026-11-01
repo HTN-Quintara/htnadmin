@@ -45,7 +45,7 @@ cd frontend && npm run dev | npm run build | npm run test | npm run lint | npx p
 2. **Audit everything sensitive.** Any change to money, permissions, levels/positions, registrations status, vouchers or speaker links writes an append-only `AuditEntry` (who, what, before/after, when).
 3. **No hard deletes** for financial, registration, sponsor or audit data. Use void or cancel, and always record a reason.
 4. **Money** is stored as `decimal(12,2)` in PHP, never float. Balances are derived from posted ledger entries.
-5. **Secrets come only from environment variables** (`MAILTRAP_API_TOKEN`, connection strings). Never commit them; `.env` is git-ignored and `.env.example` is committed.
+5. **Secrets come only from environment variables** (`MAILTRAP_API_TOKEN`, connection strings). Never commit them; `.env` is git-ignored and `.env.example` is committed. The one exception: board members may save the Mailtrap API token in Settings → Email delivery, where it is stored encrypted with ASP.NET Data Protection (purpose `Htn.Email.MailtrapToken.v1`), never returned by the API and audited only as its last four characters. The env vars remain the fallback when no token is saved.
 6. **Personal data:** collect only what the design asks for. Store Data Privacy Act consent with a timestamp. Mask emails in lists where the design does.
 7. **IDs shown to the public** (participant IDs, voucher codes, speaker tokens, QR payloads) are random or signed. Never use sequential database IDs.
 8. **UI follows the design canvas and the `design-system` skill:** brand #B71C1C, Tailwind gray scale, light/dark/system modes, WCAG AA, 44px touch targets, real `<button>`/`<label>`.

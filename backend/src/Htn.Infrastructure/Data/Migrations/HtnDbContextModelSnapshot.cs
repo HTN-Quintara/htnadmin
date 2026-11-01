@@ -3884,6 +3884,12 @@ namespace Htn.Infrastructure.Data.Migrations
                         {
                             t.HasCheckConstraint("ck_org_settings_brand_color", "brand_color ~ '^#[0-9A-Fa-f]{6}$'");
 
+                            t.HasCheckConstraint("ck_org_settings_email_mode", "email_mode IN ('Sandbox', 'Live')");
+
+                            t.HasCheckConstraint("ck_org_settings_email_sandbox_inbox", "email_updated_at IS NULL OR email_mode <> 'Sandbox' OR email_inbox_id IS NOT NULL");
+
+                            t.HasCheckConstraint("ck_org_settings_email_token", "(email_protected_api_token IS NULL) = (email_token_last4 IS NULL)");
+
                             t.HasCheckConstraint("ck_org_settings_merch_discounts", "goon_merch_discount_pct BETWEEN 0 AND 100 AND apprentice_merch_discount_pct BETWEEN 0 AND 100 AND member_merch_discount_pct BETWEEN 0 AND 100 AND board_merch_discount_pct BETWEEN 0 AND 100");
 
                             t.HasCheckConstraint("ck_org_settings_multipliers", "lead_multiplier BETWEEN 0 AND 2 AND collab_multiplier BETWEEN 0 AND 2 AND assistant_multiplier BETWEEN 0 AND 2");
@@ -7115,6 +7121,72 @@ namespace Htn.Infrastructure.Data.Migrations
                         .HasForeignKey("LogoLightFileId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .HasConstraintName("fk_org_settings_stored_files_logo_light_file_id");
+
+                    b.OwnsOne("Htn.Domain.Settings.EmailDeliverySettings", "Email", b1 =>
+                        {
+                            b1.Property<int>("OrgSettingsId")
+                                .HasColumnType("integer")
+                                .HasColumnName("id");
+
+                            b1.Property<string>("FromEmail")
+                                .IsRequired()
+                                .ValueGeneratedOnAdd()
+                                .HasMaxLength(254)
+                                .HasColumnType("character varying(254)")
+                                .HasDefaultValue("no-reply@hackthenorth.ph")
+                                .HasColumnName("email_from_email");
+
+                            b1.Property<string>("FromName")
+                                .IsRequired()
+                                .ValueGeneratedOnAdd()
+                                .HasMaxLength(100)
+                                .HasColumnType("character varying(100)")
+                                .HasDefaultValue("HackTheNorth.PH")
+                                .HasColumnName("email_from_name");
+
+                            b1.Property<string>("InboxId")
+                                .HasMaxLength(32)
+                                .HasColumnType("character varying(32)")
+                                .HasColumnName("email_inbox_id");
+
+                            b1.Property<string>("Mode")
+                                .IsRequired()
+                                .ValueGeneratedOnAdd()
+                                .HasMaxLength(16)
+                                .HasColumnType("character varying(16)")
+                                .HasDefaultValue("Sandbox")
+                                .HasColumnName("email_mode");
+
+                            b1.Property<string>("ProtectedApiToken")
+                                .HasMaxLength(2048)
+                                .HasColumnType("character varying(2048)")
+                                .HasColumnName("email_protected_api_token");
+
+                            b1.Property<string>("ReplyTo")
+                                .HasMaxLength(254)
+                                .HasColumnType("character varying(254)")
+                                .HasColumnName("email_reply_to");
+
+                            b1.Property<string>("TokenLast4")
+                                .HasMaxLength(4)
+                                .HasColumnType("character varying(4)")
+                                .HasColumnName("email_token_last4");
+
+                            b1.Property<DateTimeOffset?>("UpdatedAt")
+                                .HasColumnType("timestamp with time zone")
+                                .HasColumnName("email_updated_at");
+
+                            b1.HasKey("OrgSettingsId");
+
+                            b1.ToTable("org_settings");
+
+                            b1.WithOwner()
+                                .HasForeignKey("OrgSettingsId")
+                                .HasConstraintName("fk_org_settings_org_settings_id");
+                        });
+
+                    b.Navigation("Email")
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("Htn.Domain.Speakers.Speaker", b =>

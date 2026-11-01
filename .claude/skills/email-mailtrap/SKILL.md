@@ -5,13 +5,18 @@ description: How HTN sends transactional email through the Mailtrap Email API fr
 
 # Email via Mailtrap
 
-## Configuration (environment variables only)
+## Configuration (Settings first, environment as fallback)
 | Var | Dev | Prod |
 |---|---|---|
 | `MAILTRAP_API_TOKEN` | sandbox token | sending token |
 | `MAILTRAP_MODE` | `sandbox` | `live` |
 | `MAILTRAP_INBOX_ID` | sandbox inbox id | — |
 | `MAIL_FROM` | `HackTheNorth.PH <no-reply@hackthenorth.ph>` | same |
+
+Admins with `Settings.Manage` can save the same values in **Settings → Email delivery** (`GET/PUT /api/settings/email`, test send `POST /api/settings/email/test`): mode `Sandbox`/`Live`, inbox ID (required for Sandbox), from email + name, reply-to, and the API token.
+- The token is encrypted with Data Protection (`IEmailTokenProtector`, purpose `Htn.Email.MailtrapToken.v1`) into `org_settings.email_protected_api_token`; only `tokenLast4` is ever shown or audited (`settings.email_update`).
+- `IMailtrapConfigProvider.GetAsync` resolves the effective config per send (cached 30 s, invalidated on save): saved fields once saved; the saved token if present and decryptable, else `MAILTRAP_API_TOKEN`. `source` is `Database`, `Environment` or `None`.
+- With no token anywhere, `MailtrapEmailSender` hands off to `LoggingEmailSender`: logs in Development, logs masked with `Email__AllowLoggingSender=true`, otherwise throws so the outbox retries and flags the row. Startup outside Development without the env token only logs a warning.
 
 Endpoints:
 - live: `POST https://send.api.mailtrap.io/api/send`
@@ -26,7 +31,7 @@ Header `Authorization: Bearer <token>`, JSON body: `from`, `to[]`, `subject`, `h
   - After 5 failures the row is flagged for admin review.
 - **Rendering:** Razor component templates (`Htn.Infrastructure/Email/Templates/*.razor`) via `HtmlRenderer`. Each message has a plain-text alternative.
 - **Branding:** logo URL, theme color, payment accounts and deadline come from event or org settings. The layout is fixed; admins can't edit HTML.
-- **Categories** (for Mailtrap analytics): `billing`, `ticket`, `invite`, `password-reset`, `speaker-link`, `speaker-otp`, `voucher`, `invitation-letter`, `finance`.
+- **Categories** (for Mailtrap analytics): `billing`, `ticket`, `invite`, `password-reset`, `speaker-link`, `speaker-otp`, `voucher`, `invitation-letter`, `finance`, `test` (delivery test from Settings).
 
 ## Templates and required content
 | Template | Trigger | Must include |

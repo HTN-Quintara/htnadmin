@@ -74,6 +74,11 @@ public sealed class RateLimitSettings
 
     public int TasksWriteWindowSeconds { get; set; } = 60;
 
+    /// <summary>Settings → Email delivery test sends per signed-in user per window (5 an hour).</summary>
+    public int SettingsEmailTestPermitLimit { get; set; } = 5;
+
+    public int SettingsEmailTestWindowSeconds { get; set; } = 60 * 60;
+
     /// <summary>@mention email recipients one comment author can trigger per window (one permit per recipient).</summary>
     public int MentionEmailsPerAuthorPermitLimit { get; set; } = 30;
 

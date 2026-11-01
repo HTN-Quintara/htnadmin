@@ -36,4 +36,5 @@ public static class EmailCategories
     public const string SpeakerOtp = "speaker-otp";
     public const string Voucher = "voucher";
     public const string InvitationLetter = "invitation-letter";
+    public const string Test = "test";
 }

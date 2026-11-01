@@ -66,7 +66,7 @@ Volunteers have no login: they are per-event records managed by the board or the
 | `Finance.Post` (money in/out, transfers, void, reconcile, close month, budgets) | **CFO only** | — | finance assistant: add only, stays Pending | — |
 | `Finance.Approve` | **CFO only** | — | — | — |
 | `Finance.Request` (expense requests) | ✓ | — | — | — |
-| `Settings.Manage` (points multipliers, payment accounts, email branding, org theme) | ✓ | — | — | — |
+| `Settings.Manage` (points multipliers, payment accounts, email branding, email delivery / Mailtrap token and test send, org theme) | ✓ | — | — | — |
 | `Settings.Personal` (own mode / text size / density) | ✓ | ✓ | ✓ | ✓ |
 
 ## Rules

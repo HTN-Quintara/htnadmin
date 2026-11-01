@@ -23,6 +23,12 @@ internal sealed class OrgSettingsConfiguration : IEntityTypeConfiguration<OrgSet
             t.HasCheckConstraint("ck_org_settings_merch_discounts",
                 "goon_merch_discount_pct BETWEEN 0 AND 100 AND apprentice_merch_discount_pct BETWEEN 0 AND 100 " +
                 "AND member_merch_discount_pct BETWEEN 0 AND 100 AND board_merch_discount_pct BETWEEN 0 AND 100");
+            t.HasCheckConstraint("ck_org_settings_email_mode", CheckConstraints.In("email_mode", Enum.GetNames<EmailDeliveryMode>()));
+            // The unsaved seed row is Sandbox without an inbox (env applies); once saved, Sandbox needs one.
+            t.HasCheckConstraint("ck_org_settings_email_sandbox_inbox",
+                "email_updated_at IS NULL OR email_mode <> 'Sandbox' OR email_inbox_id IS NOT NULL");
+            t.HasCheckConstraint("ck_org_settings_email_token",
+                "(email_protected_api_token IS NULL) = (email_token_last4 IS NULL)");
         });
         b.HasKey(s => s.Id);
         b.Property(s => s.Id).ValueGeneratedNever();
@@ -37,6 +43,24 @@ internal sealed class OrgSettingsConfiguration : IEntityTypeConfiguration<OrgSet
         b.Property(s => s.ApprenticeMerchDiscountPct).HasDefaultValue(15);
         b.Property(s => s.MemberMerchDiscountPct).HasDefaultValue(10);
         b.Property(s => s.BoardMerchDiscountPct).HasDefaultValue(0);
+        // Mailtrap delivery settings, in the same row. Added to the seeded table, so required columns carry defaults.
+        b.OwnsOne(s => s.Email, e =>
+        {
+            e.Property(x => x.Mode).HasColumnName("email_mode").HasConversion<string>().HasMaxLength(16)
+                .HasDefaultValue(EmailDeliveryMode.Sandbox).HasSentinel((EmailDeliveryMode)(-1));
+            e.Property(x => x.InboxId).HasColumnName("email_inbox_id").HasMaxLength(EmailDeliverySettings.InboxIdMaxLength);
+            e.Property(x => x.FromEmail).HasColumnName("email_from_email").HasMaxLength(EmailDeliverySettings.EmailMaxLength)
+                .IsRequired().HasDefaultValue(EmailDeliverySettings.DefaultFromEmail);
+            e.Property(x => x.FromName).HasColumnName("email_from_name").HasMaxLength(EmailDeliverySettings.FromNameMaxLength)
+                .IsRequired().HasDefaultValue(EmailDeliverySettings.DefaultFromName);
+            e.Property(x => x.ReplyTo).HasColumnName("email_reply_to").HasMaxLength(EmailDeliverySettings.EmailMaxLength);
+            e.Property(x => x.ProtectedApiToken).HasColumnName("email_protected_api_token").HasMaxLength(EmailDeliverySettings.ProtectedTokenMaxLength);
+            e.Property(x => x.TokenLast4).HasColumnName("email_token_last4").HasMaxLength(4);
+            e.Property(x => x.UpdatedAt).HasColumnName("email_updated_at");
+            e.Ignore(x => x.HasToken);
+            e.Ignore(x => x.IsSaved);
+        });
+        b.Navigation(s => s.Email).IsRequired();
         b.HasOne<StoredFile>().WithMany().HasForeignKey(s => s.LogoLightFileId).OnDelete(DeleteBehavior.Restrict);
         b.HasOne<StoredFile>().WithMany().HasForeignKey(s => s.LogoDarkFileId).OnDelete(DeleteBehavior.Restrict);
 

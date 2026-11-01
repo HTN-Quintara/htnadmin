@@ -144,3 +144,53 @@ export const reasonSchema = z.object({
   reason: z.string().trim().min(1, 'Enter a reason.').max(500, 'Use 500 characters or fewer.'),
 })
 export type ReasonValues = z.infer<typeof reasonSchema>
+
+// ---- Email delivery (Mailtrap) ------------------------------------------------
+
+export const emailModeSchema = z.enum(['Sandbox', 'Live'])
+export type EmailMode = z.infer<typeof emailModeSchema>
+
+export const emailSettingsSchema = z.object({
+  mode: emailModeSchema,
+  inboxId: z.string().nullable(),
+  fromEmail: z.string(),
+  fromName: z.string(),
+  replyTo: z.string().nullable(),
+  tokenSet: z.boolean(),
+  tokenLast4: z.string().nullable(),
+  tokenUnreadable: z.boolean().default(false),
+  source: z.enum(['Database', 'Environment', 'None']),
+  updatedAt: z.string().nullable(),
+})
+export type EmailSettings = z.infer<typeof emailSettingsSchema>
+
+const emailField = z.string().trim().min(1, 'Enter an email address.').pipe(z.email('Enter a valid email address.'))
+
+export const emailSettingsFormSchema = z
+  .object({
+    mode: emailModeSchema,
+    inboxId: z.string().trim(),
+    fromName: z.string().trim().min(1, 'Enter a sender name.').max(100, 'Keep it under 100 characters.'),
+    fromEmail: emailField,
+    replyTo: z.string().trim().refine((v) => v === '' || z.email().safeParse(v).success, 'Enter a valid email address.'),
+    apiToken: z.string().trim(),
+  })
+  .superRefine((v, ctx) => {
+    if (v.mode === 'Sandbox' && v.inboxId === '') ctx.addIssue({ code: 'custom', path: ['inboxId'], message: 'Enter the sandbox inbox ID.' })
+  })
+export type EmailSettingsFormValues = z.infer<typeof emailSettingsFormSchema>
+
+export type EmailSettingsBody = {
+  mode: EmailMode
+  inboxId: string | null
+  fromEmail: string
+  fromName: string
+  replyTo: string | null
+  apiToken: string | null
+  clearToken: boolean
+}
+
+export const testEmailFormSchema = z.object({ to: emailField })
+export type TestEmailFormValues = z.infer<typeof testEmailFormSchema>
+
+export const testEmailResultSchema = z.object({ to: z.string() })

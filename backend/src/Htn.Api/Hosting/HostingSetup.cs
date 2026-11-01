@@ -13,7 +13,7 @@ public static class HostingSetup
     public const string DataProtectionCertificatePath = "DataProtection:CertificatePath";
     public const string DataProtectionCertificatePassword = "DataProtection:CertificatePassword";
     public const string DataProtectionAllowUnprotectedKeys = "DataProtection:AllowUnprotectedKeys";
-    public const string EmailAllowLoggingSender = "Email:AllowLoggingSender";
+    public const string EmailAllowLoggingSender = LoggingEmailSender.AllowLoggingSenderKey;
 
     /// <summary>
     /// Keys are stored in Postgres. When <c>DataProtection:CertificatePath</c> points to a PFX, keys are encrypted at rest
@@ -75,14 +75,19 @@ public static class HostingSetup
             "Set App__PublicBaseUrl (PUBLIC_BASE_URL in docker-compose.prod.yml) to the public https address, e.g. https://admin.hackthenorth.ph.");
     }
 
-    /// <summary>Outside Development, a missing MAILTRAP_API_TOKEN would silently drop invites and resets; refuse to start.</summary>
-    public static void EnsureEmailConfigured(IConfiguration config, IHostEnvironment env)
+    /// <summary>
+    /// Outside Development, a missing MAILTRAP_API_TOKEN used to stop startup. The token may now be saved (encrypted) in
+    /// Settings → Email delivery, which can't be read before the database is up, so this returns a warning to log instead.
+    /// Without a token anywhere, sends fail and stay in the outbox (retried, then flagged) unless
+    /// Email:AllowLoggingSender=true, which logs them masked instead.
+    /// </summary>
+    /// <returns>A warning to log, or null when nothing is wrong.</returns>
+    public static string? EnsureEmailConfigured(IConfiguration config, IHostEnvironment env)
     {
-        if (env.IsDevelopment() || MailtrapOptions.FromConfiguration(config).IsConfigured) return;
-        if (config.GetValue<bool>(EmailAllowLoggingSender)) return;
-        throw new InvalidOperationException(
-            $"MAILTRAP_API_TOKEN is not set in the {env.EnvironmentName} environment, so no email would be sent. " +
-            "Set MAILTRAP_API_TOKEN, or set Email__AllowLoggingSender=true to log (masked) instead of sending.");
+        if (env.IsDevelopment() || MailtrapOptions.FromConfiguration(config).IsConfigured) return null;
+        if (config.GetValue<bool>(EmailAllowLoggingSender)) return null;
+        return $"MAILTRAP_API_TOKEN is not set in the {env.EnvironmentName} environment. Email is sent only if a token is saved in " +
+               "Settings → Email delivery; otherwise messages stay in the outbox. Set Email__AllowLoggingSender=true to log (masked) instead.";
     }
 
     /// <summary>

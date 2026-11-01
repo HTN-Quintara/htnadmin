@@ -26,12 +26,18 @@ public static class EmailTypes
 
     /// <summary>An invitation letter, sent to an organization's verified contact (Phase 7B, frame 18-adjacent).</summary>
     public const string InvitationLetter = "email.invitation_letter";
+
+    /// <summary>A test from Settings → Email delivery, proving the saved Mailtrap settings work.</summary>
+    public const string DeliveryTest = "email.delivery_test";
 }
 
 /// <summary>Payload stored in the outbox. The raw token travels separately in <c>OutboxMessage.Secret</c>.</summary>
 public sealed record InviteEmailPayload(Guid UserId, string To, string FirstName, string? InviterName, string Level, string? Position);
 
 public sealed record PasswordResetEmailPayload(Guid UserId, string To, string FirstName);
+
+/// <summary>A delivery test to any address an admin types; only the requester's first name goes in the body.</summary>
+public sealed record DeliveryTestEmailPayload(string To, string RequestedBy);
 
 /// <summary>
 /// One @mention in one task comment. The recipient was already checked against the board's visibility when the comment

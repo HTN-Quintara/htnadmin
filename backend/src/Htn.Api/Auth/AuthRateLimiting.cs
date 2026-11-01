@@ -45,6 +45,7 @@ public static class AuthRateLimiting
             o.AddPolicy(TaskRateLimiting.Write, http => TaskRateLimiting.PerUser(TaskRateLimiting.Write, http));
             o.AddPolicy(FinanceRateLimiting.Write, http => TaskRateLimiting.PerUser(FinanceRateLimiting.Write, http));
         o.AddPolicy(SponsorsRateLimiting.Write, http => TaskRateLimiting.PerUser(SponsorsRateLimiting.Write, http));
+            o.AddPolicy(SettingsRateLimiting.EmailTest, SettingsRateLimiting.PerUser);
         });
         return services;
     }
@@ -257,6 +258,25 @@ public static class CheckInRateLimiting
 public static class FinanceRateLimiting
 {
     public const string Write = "finance-write";
+}
+
+/// <summary>Settings → Email delivery test sends: its own small budget per user (default 5 an hour).</summary>
+public static class SettingsRateLimiting
+{
+    public const string EmailTest = "settings-email-test";
+
+    internal static RateLimitPartition<string> PerUser(HttpContext http)
+    {
+        var s = http.RequestServices.GetRequiredService<IOptions<RateLimitSettings>>().Value;
+        var userId = http.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+        var key = userId is { Length: > 0 } ? "user:" + userId : "ip:" + AuthRateLimiting.ClientIp(http);
+        return RateLimitPartition.GetFixedWindowLimiter($"{EmailTest}|{key}", _ => new FixedWindowRateLimiterOptions
+        {
+            PermitLimit = Math.Max(1, s.SettingsEmailTestPermitLimit),
+            Window = TimeSpan.FromSeconds(Math.Max(1, s.SettingsEmailTestWindowSeconds)),
+            QueueLimit = 0,
+        });
+    }
 }
 
 public static class SponsorsRateLimiting

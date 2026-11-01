@@ -42,6 +42,7 @@ describe('SettingsPage navigation', () => {
         'Points',
         'Payment accounts',
         'Email branding',
+        'Email delivery',
         'Roles & permissions',
       ]),
     )

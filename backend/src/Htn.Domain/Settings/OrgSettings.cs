@@ -47,6 +47,9 @@ public sealed class OrgSettings
     public int MemberMerchDiscountPct { get; private set; }
     public int BoardMerchDiscountPct { get; private set; }
 
+    /// <summary>Mailtrap delivery settings (mode, sender, encrypted API token). See <see cref="EmailDeliverySettings"/>.</summary>
+    public EmailDeliverySettings Email { get; private set; } = EmailDeliverySettings.Default();
+
     public DateTimeOffset? UpdatedAt { get; private set; }
     public Guid? UpdatedById { get; private set; }
 
@@ -68,6 +71,7 @@ public sealed class OrgSettings
         ApprenticeMerchDiscountPct = 15,
         MemberMerchDiscountPct = 10,
         BoardMerchDiscountPct = 0,
+        Email = EmailDeliverySettings.Default(),
     };
 
     public static bool IsValidMultiplier(decimal value) =>
@@ -117,6 +121,28 @@ public sealed class OrgSettings
             throw new DomainException($"Payment deadline must be {MinPaymentDeadlineHours}–{MaxPaymentDeadlineHours} hours.");
         BrandColor = brandColor.ToUpperInvariant();
         PaymentDeadlineHours = paymentDeadlineHours;
+        Touch(at, actorId);
+    }
+
+    /// <summary>Mode, sender and reply-to for Mailtrap delivery. Sandbox needs an inbox ID. The token is set separately.</summary>
+    public void UpdateEmailDelivery(
+        EmailDeliveryMode mode, string? inboxId, string fromEmail, string fromName, string? replyTo, DateTimeOffset at, Guid? actorId)
+    {
+        Email.Update(mode, inboxId, fromEmail, fromName, replyTo, at);
+        Touch(at, actorId);
+    }
+
+    /// <summary>Stores the Mailtrap API token, already encrypted by the caller; only its last four characters stay readable.</summary>
+    public void SetEmailApiToken(string protectedToken, string last4, DateTimeOffset at, Guid? actorId)
+    {
+        Email.SetToken(protectedToken, last4, at);
+        Touch(at, actorId);
+    }
+
+    /// <summary>Removes the stored token, so delivery falls back to MAILTRAP_API_TOKEN from the environment.</summary>
+    public void ClearEmailApiToken(DateTimeOffset at, Guid? actorId)
+    {
+        Email.ClearToken(at);
         Touch(at, actorId);
     }
 

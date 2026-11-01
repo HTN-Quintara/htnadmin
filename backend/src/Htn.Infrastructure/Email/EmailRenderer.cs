@@ -51,6 +51,29 @@ public sealed class EmailRenderer(IServiceProvider services, ILoggerFactory logg
         });
     }
 
+    public async Task<EmailMessage> DeliveryTestAsync(DeliveryTestEmailPayload p)
+    {
+        var logo = await LogoAsync();
+        var html = await RenderAsync<DeliveryTestEmail>(new Dictionary<string, object?>
+        {
+            [nameof(DeliveryTestEmail.RequestedBy)] = p.RequestedBy,
+            [nameof(DeliveryTestEmail.BrandColor)] = await BrandColorAsync(),
+            [nameof(DeliveryTestEmail.LogoCid)] = logo?.ContentId,
+        });
+        var text =
+            $"""
+            Hi,
+
+            This is a test email from the {Brand.OrgName} Admin email delivery settings. If you can read it, delivery through Mailtrap works.
+
+            Requested by {p.RequestedBy}. You can ignore this email.
+
+            {Brand.OrgName}
+            """;
+        return new EmailMessage(p.To, null, $"[Test] {Brand.OrgName} email delivery works", html, text, EmailCategories.Test,
+            logo is null ? null : [logo]);
+    }
+
     public async Task<EmailMessage> InviteAsync(InviteEmailPayload p, string link, int expiresInHours)
     {
         var logo = await LogoAsync();

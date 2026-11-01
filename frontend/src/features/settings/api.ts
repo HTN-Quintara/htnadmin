@@ -3,6 +3,9 @@ import { z } from 'zod'
 import { api, apiVoid } from '@/app/api'
 import {
   brandingSchema,
+  emailSettingsSchema,
+  testEmailResultSchema,
+  type EmailSettingsBody,
   orgSettingsSchema,
   paymentAccountSchema,
   type BrandingFormValues,
@@ -13,6 +16,7 @@ import {
 
 export const settingsKeys = {
   org: ['settings', 'org'] as const,
+  email: ['settings', 'email'] as const,
   paymentAccounts: ['settings', 'payment-accounts'] as const,
   paymentAccountList: (includeInactive: boolean) => ['settings', 'payment-accounts', { includeInactive }] as const,
 }
@@ -91,5 +95,29 @@ export function useDeactivatePaymentAccountMutation() {
     mutationFn: ({ id, reason }: { id: string; reason: string }) =>
       apiVoid(`/api/settings/payment-accounts/${encodeURIComponent(id)}/deactivate`, { method: 'POST', body: { reason } }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: settingsKeys.paymentAccounts }),
+  })
+}
+
+export function useEmailSettingsQuery(enabled = true) {
+  return useQuery({
+    queryKey: settingsKeys.email,
+    queryFn: () => api('/api/settings/email', emailSettingsSchema),
+    enabled,
+  })
+}
+
+export function useSaveEmailSettingsMutation() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (body: EmailSettingsBody) => api('/api/settings/email', emailSettingsSchema, { method: 'PUT', body }),
+    onSuccess: (settings) => {
+      queryClient.setQueryData(settingsKeys.email, settings)
+    },
+  })
+}
+
+export function useSendTestEmailMutation() {
+  return useMutation({
+    mutationFn: (body: { to: string }) => api('/api/settings/email/test', testEmailResultSchema, { method: 'POST', body }),
   })
 }
